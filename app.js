@@ -1,7 +1,49 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v9-clipboard-paste';
+const RESULTS_KEY = 'orical-web-results-v11-shortcut-helper';
 const HELLOCOLLE_URL = 'https://helloproject.orical.jp/mypage/Ruliiiimaepiiii';
+
+const SHORTCUT_INSTALL_URL = ''; // iCloudショートカット共有リンクを固定したい場合はここに入れます
+const SHORTCUT_INSTALL_KEY = 'orical-shortcut-install-url';
+const shortcutJsCode = `completion((() => {
+  const toAbs = (u) => {
+    try {
+      return new URL(u, location.href).href;
+    } catch {
+      return '';
+    }
+  };
+
+  const urls = [...document.querySelectorAll('video source, video, img, source')]
+    .map(el =>
+      el.currentSrc ||
+      el.src ||
+      el.getAttribute('src') ||
+      el.getAttribute('data-src') ||
+      ''
+    )
+    .map(toAbs)
+    .filter(Boolean)
+    .filter(u => /\.(jpg|jpeg|png|webp|gif|mp4|mov)(\?|$)/i.test(u));
+
+  const unique = [...new Set(urls)];
+
+  return unique.length
+    ? unique.join('\n')
+    : '画像・動画URLが見つかりませんでした。カード詳細を開いた状態で実行してください。';
+})());`;
+const shortcutSetupText = `【ハロコレURL抽出ショートカット設定】
+1. ショートカットアプリで新規ショートカットを作成
+2. 「WebページでJavaScriptを実行」を追加
+3. 最初から入っているコードを全部消して、下のコードを貼り付け
+4. 次に「クリップボードにコピー」を追加
+5. 詳細設定で「共有シートに表示」をON
+6. 受け入れる入力を「SafariのWebページ」にする
+7. ハロコレをSafariで開き、カード詳細を表示した状態で共有ボタンから実行
+
+--- 貼り付けるコード ---
+${shortcutJsCode}`;
+
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
@@ -78,12 +120,90 @@ function wireEvents() {
     area.value = bookmarkletCode;
     if (!area.hidden) area.select();
   });
+  wireShortcutHelper();
+
   const extractBtn = $('extractBtn');
   if (extractBtn) extractBtn.addEventListener('click', extractFromText);
   const useAsStartBtn = $('useAsStartBtn');
   if (useAsStartBtn) useAsStartBtn.addEventListener('click', () => useExtractedUrl('startUrl'));
   const useAsEndBtn = $('useAsEndBtn');
   if (useAsEndBtn) useAsEndBtn.addEventListener('click', () => useExtractedUrl('endUrl'));
+}
+
+
+function wireShortcutHelper() {
+  const copyJsBtn = $('copyShortcutJsBtn');
+  if (copyJsBtn) copyJsBtn.addEventListener('click', async () => {
+    await copyText(shortcutJsCode);
+    toast('ショートカット用コードをコピーしました');
+  });
+
+  const openShortcutsAppLink = $('openShortcutsAppLink');
+  if (openShortcutsAppLink) openShortcutsAppLink.addEventListener('click', () => {
+    toast('ショートカットアプリを開きます');
+  });
+
+  const copyStepsBtn = $('copyShortcutStepsBtn');
+  if (copyStepsBtn) copyStepsBtn.addEventListener('click', async () => {
+    await copyText(shortcutSetupText);
+    toast('設定手順をコピーしました');
+  });
+
+  const saveLinkBtn = $('saveShortcutLinkBtn');
+  if (saveLinkBtn) saveLinkBtn.addEventListener('click', saveShortcutInstallUrl);
+
+  const clearLinkBtn = $('clearShortcutLinkBtn');
+  if (clearLinkBtn) clearLinkBtn.addEventListener('click', () => {
+    localStorage.removeItem(SHORTCUT_INSTALL_KEY);
+    const input = $('shortcutLinkInput');
+    if (input) input.value = '';
+    updateShortcutInstallUI();
+    toast('ショートカットリンク登録を解除しました');
+  });
+
+  const input = $('shortcutLinkInput');
+  if (input) input.value = getShortcutInstallUrl();
+  updateShortcutInstallUI();
+}
+
+function getShortcutInstallUrl() {
+  return (localStorage.getItem(SHORTCUT_INSTALL_KEY) || SHORTCUT_INSTALL_URL || '').trim();
+}
+
+function isShortcutShareUrl(url) {
+  return /^https:\/\/www\.icloud\.com\/shortcuts\/[a-z0-9-]+/i.test(url) || /^shortcuts:\/\//i.test(url);
+}
+
+function saveShortcutInstallUrl() {
+  const input = $('shortcutLinkInput');
+  const url = (input?.value || '').trim();
+  if (!url) {
+    localStorage.removeItem(SHORTCUT_INSTALL_KEY);
+    updateShortcutInstallUI();
+    toast('空欄なので登録を解除しました');
+    return;
+  }
+  if (!isShortcutShareUrl(url)) {
+    toast('iCloudショートカット共有リンクを入れてください');
+    return;
+  }
+  localStorage.setItem(SHORTCUT_INSTALL_KEY, url);
+  updateShortcutInstallUI();
+  toast('ショートカット追加リンクを登録しました');
+}
+
+function updateShortcutInstallUI() {
+  const url = getShortcutInstallUrl();
+  const area = $('shortcutInstallArea');
+  const link = $('installShortcutLink');
+  if (!area || !link) return;
+  if (url) {
+    link.href = url;
+    area.hidden = false;
+  } else {
+    link.href = '#';
+    area.hidden = true;
+  }
 }
 
 function extractAllMediaUrls(text) {

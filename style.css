@@ -164,3 +164,33 @@ progress { width: 120px; height: 12px; }
 @media (max-width: 520px) {
   .pasteActions button { width: 100%; flex-basis: 100%; }
 }
+
+
+.sectionTitleRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.shortcutCard { border-color: rgba(244, 114, 182, .35); background: rgba(255, 255, 255, .94); }
+.shortcutInstallArea {
+  margin: 10px 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(37, 99, 235, .2);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(219, 234, 254, .85), rgba(252, 231, 243, .85));
+}
+.strongHint { margin: 0; font-weight: 800; color: #1e3a8a; }
+.shortcutActions button, .shortcutActions .openLink { flex: 1 1 190px; }
+.setupDetails {
+  margin-top: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 12px 14px;
+}
+.setupDetails summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: #1d4ed8;
+}
+.steps { margin: 10px 0 0; padding-left: 1.4em; }
+.ownerDetails { background: #fff7ed; border-color: #fed7aa; }
+@media (max-width: 520px) {
+  .shortcutActions button, .shortcutActions .openLink { width: 100%; flex-basis: 100%; }
+}

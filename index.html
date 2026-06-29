@@ -3,18 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#2563eb" />
-  <title>ハロコレ URL保存サポーター v9</title>
-  <link rel="manifest" href="manifest.webmanifest?v=9" />
-  <link rel="stylesheet" href="style.css?v=9" />
+  <meta name="theme-color" content="#ff7dae" />
+  <title>ハロコレ 画像保存サポーター v11</title>
+  <link rel="manifest" href="manifest.webmanifest?v=11" />
+  <link rel="icon" href="favicon.png?v=11" type="image/png" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=11" />
+  <link rel="stylesheet" href="style.css?v=11" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="app.js?v=9"></script>
+  <script defer src="app.js?v=11"></script>
 </head>
 <body>
   <header class="hero">
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
-      <h1>ハロコレ URL保存サポーター</h1>
+      <h1>ハロコレ 画像保存サポーター</h1>
       <p class="lead">ハロコレを開いて、取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。</p>
     </div>
   </header>
@@ -65,10 +67,55 @@
       <p class="hint">開始URLだけなら単体モード、開始URL＋終了URLなら連番検出モードになります。開始と終了が逆だった時は、入れ替えボタンを使えます。</p>
     </section>
 
+    <section class="card shortcutCard" id="shortcutCard">
+      <div class="sectionTitleRow">
+        <div>
+          <h2>2. ショートカットを追加</h2>
+          <p class="hint">ハロコレ側で開いている画像/動画URLをコピーするためのiPhoneショートカット設定をまとめました。</p>
+        </div>
+      </div>
+
+      <div id="shortcutInstallArea" class="shortcutInstallArea" hidden>
+        <p class="hint strongHint">共有済みショートカットが登録されています。初回は下のボタンから追加してください。</p>
+        <div class="actions">
+          <a id="installShortcutLink" class="primary openLink" href="#" target="_blank" rel="noopener noreferrer external">ショートカットを追加</a>
+        </div>
+      </div>
+
+      <div class="actions shortcutActions">
+        <button id="copyShortcutJsBtn" class="secondary" type="button">ショートカット用コードをコピー</button>
+        <a id="openShortcutsAppLink" class="ghost openLink" href="shortcuts://">ショートカットアプリを開く</a>
+        <button id="copyShortcutStepsBtn" class="ghost" type="button">設定手順をコピー</button>
+      </div>
+
+      <details class="setupDetails">
+        <summary>手順を見る</summary>
+        <ol class="steps">
+          <li>「ショートカット用コードをコピー」を押します。</li>
+          <li>ショートカットアプリで新規ショートカットを作ります。</li>
+          <li>「WebページでJavaScriptを実行」を追加し、最初のコードを全部消して貼り付けます。</li>
+          <li>次に「クリップボードにコピー」を追加します。</li>
+          <li>詳細設定で「共有シートに表示」をONにして、受け入れる入力を「SafariのWebページ」にします。</li>
+          <li>ハロコレをSafariで開き、カード詳細を表示した状態で共有ボタンから実行します。</li>
+        </ol>
+      </details>
+
+      <details class="setupDetails ownerDetails">
+        <summary>配布用の1タップ追加リンクを登録</summary>
+        <p class="hint">完成したショートカットをiCloudリンクで共有し、そのURLをここに登録すると「ショートカットを追加」ボタンを出せます。配布用に固定したい場合は、そのiCloudリンクを教えてくれればアプリ内に埋め込みます。</p>
+        <label for="shortcutLinkInput">ショートカット共有リンク</label>
+        <input id="shortcutLinkInput" type="url" placeholder="https://www.icloud.com/shortcuts/......" />
+        <div class="actions compactActions">
+          <button id="saveShortcutLinkBtn" class="secondary" type="button">リンクを登録</button>
+          <button id="clearShortcutLinkBtn" class="ghost" type="button">リンク登録を解除</button>
+        </div>
+      </details>
+    </section>
+
     <section class="card resultCard" id="resultCard" hidden>
       <div class="resultHead">
         <div>
-          <h2>2. 検出結果</h2>
+          <h2>3. 検出結果</h2>
           <p id="summary" class="summary">未検出</p>
         </div>
         <progress id="progress" value="0" max="100" hidden></progress>
