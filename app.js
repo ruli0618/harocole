@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v7-open-hellocolle';
+const RESULTS_KEY = 'orical-web-results-v8-pwa-external-open';
 const HELLOCOLLE_URL = 'https://helloproject.orical.jp/mypage/Ruliiiimaepiiii';
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
@@ -27,8 +27,26 @@ window.addEventListener('pageshow', () => {
 
 function wireEvents() {
   LS_KEYS.forEach((key) => $(key).addEventListener('input', saveInputs));
-  const openHelloBtn = $('openHelloBtn');
-  if (openHelloBtn) openHelloBtn.addEventListener('click', openHellocolle);
+  const openHelloLink = $('openHelloLink');
+  if (openHelloLink) {
+    const saveBeforeOpen = () => {
+      saveInputs();
+      if (state.found.length) saveAppState();
+      toast('ハロコレを開きます');
+    };
+    openHelloLink.addEventListener('pointerdown', saveBeforeOpen, { passive: true });
+    openHelloLink.addEventListener('click', () => {
+      saveInputs();
+      if (state.found.length) saveAppState();
+    });
+  }
+  const copyHelloBtn = $('copyHelloBtn');
+  if (copyHelloBtn) copyHelloBtn.addEventListener('click', async () => {
+    saveInputs();
+    if (state.found.length) saveAppState();
+    await copyText(HELLOCOLLE_URL);
+    toast('ハロコレURLをコピーしました');
+  });
   $('scanBtn').addEventListener('click', scan);
   $('clearBtn').addEventListener('click', clearInputs);
   const swapBtn = $('swapBtn');
@@ -97,15 +115,10 @@ function useExtractedUrl(targetId) {
 
 
 function openHellocolle() {
+  // 予備関数。PWAでは window.open が効かないことがあるため、通常はHTMLの<a target="_blank">で開きます。
   saveInputs();
   if (state.found.length) saveAppState();
-  toast('ハロコレを開きます');
-  try {
-    const w = window.open(HELLOCOLLE_URL, '_blank', 'noopener');
-    if (!w) window.location.href = HELLOCOLLE_URL;
-  } catch (e) {
-    window.location.href = HELLOCOLLE_URL;
-  }
+  window.location.assign(HELLOCOLLE_URL);
 }
 
 function restoreInputs() {

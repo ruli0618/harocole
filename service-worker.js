@@ -1,4 +1,4 @@
-const CACHE = 'orical-smart-webapp-v7-open-hellocolle';
+const CACHE = 'orical-smart-webapp-v8-pwa-external-open';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (event) => {
