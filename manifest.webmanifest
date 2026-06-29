@@ -1,8 +1,8 @@
 {
   "name": "ハロコレ URL保存サポーター",
   "short_name": "ハロコレ保存",
-  "id": "orical-smart-webapp-v8",
-  "start_url": "./index.html?v=8",
+  "id": "orical-smart-webapp-v9",
+  "start_url": "./index.html?v=9",
   "scope": "./",
   "display": "standalone",
   "background_color": "#eef4ff",

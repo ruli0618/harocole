@@ -158,3 +158,9 @@ progress { width: 120px; height: 12px; }
   .quickOpenActions .openLink { width: auto; min-width: 220px; }
   .quickOpenActions .ghost { width: auto; }
 }
+
+.pasteActions { margin-top: 8px; }
+.pasteActions button { flex: 1 1 180px; }
+@media (max-width: 520px) {
+  .pasteActions button { width: 100%; flex-basis: 100%; }
+}

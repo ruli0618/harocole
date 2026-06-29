@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2563eb" />
-  <title>ハロコレ URL保存サポーター v8</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="style.css" />
+  <title>ハロコレ URL保存サポーター v9</title>
+  <link rel="manifest" href="manifest.webmanifest?v=9" />
+  <link rel="stylesheet" href="style.css?v=9" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="app.js"></script>
+  <script defer src="app.js?v=9"></script>
 </head>
 <body>
   <header class="hero">
@@ -25,6 +25,10 @@
       <p class="hint">終了カードURLは空欄でもOKです。開始URLだけの場合は、その動画/画像1件だけを保存対象にします。</p>
       <label for="startUrl">開始カードURL</label>
       <textarea id="startUrl" rows="3" placeholder="https://cdn.orical.jp/cards/.../star_5/frontimage/13000001_xxxxx.mp4"></textarea>
+      <div class="actions compactActions pasteActions">
+        <button id="pasteStartBtn" class="secondary" type="button">クリップボードを開始URLへ貼り付け</button>
+        <button id="pasteStartScanBtn" class="primary" type="button">貼り付けて検出</button>
+      </div>
 
       <div class="actions compactActions">
         <button id="swapBtn" class="ghost" type="button">開始URLと終了URLを入れ替え</button>
@@ -32,6 +36,10 @@
 
       <label for="endUrl">終了カードURL</label>
       <textarea id="endUrl" rows="3" placeholder="空欄OK。連番検出したい時だけ終了側URLを入れてください"></textarea>
+      <div class="actions compactActions pasteActions">
+        <button id="pasteEndBtn" class="secondary" type="button">クリップボードを終了URLへ貼り付け</button>
+        <button id="pasteBothBtn" class="ghost" type="button">複数行を開始/終了へ分けて貼り付け</button>
+      </div>
 
       <div class="grid2">
         <div>

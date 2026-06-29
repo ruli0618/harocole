@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v8-pwa-external-open';
+const RESULTS_KEY = 'orical-web-results-v9-clipboard-paste';
 const HELLOCOLLE_URL = 'https://helloproject.orical.jp/mypage/Ruliiiimaepiiii';
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
@@ -47,6 +47,17 @@ function wireEvents() {
     await copyText(HELLOCOLLE_URL);
     toast('ハロコレURLをコピーしました');
   });
+  const pasteStartBtn = $('pasteStartBtn');
+  if (pasteStartBtn) pasteStartBtn.addEventListener('click', () => pasteClipboardTo('startUrl'));
+  const pasteEndBtn = $('pasteEndBtn');
+  if (pasteEndBtn) pasteEndBtn.addEventListener('click', () => pasteClipboardTo('endUrl'));
+  const pasteStartScanBtn = $('pasteStartScanBtn');
+  if (pasteStartScanBtn) pasteStartScanBtn.addEventListener('click', async () => {
+    const ok = await pasteClipboardTo('startUrl', { clearEnd: true, quiet: true });
+    if (ok) await scan();
+  });
+  const pasteBothBtn = $('pasteBothBtn');
+  if (pasteBothBtn) pasteBothBtn.addEventListener('click', pasteClipboardSplitStartEnd);
   $('scanBtn').addEventListener('click', scan);
   $('clearBtn').addEventListener('click', clearInputs);
   const swapBtn = $('swapBtn');
@@ -111,6 +122,61 @@ function useExtractedUrl(targetId) {
   $(targetId).value = state.extractedUrl;
   saveInputs();
   toast(targetId === 'startUrl' ? '開始URLに入れました' : '終了URLに入れました');
+}
+
+
+async function readClipboardText() {
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) return text;
+      toast('クリップボードが空でした');
+      return '';
+    } catch (e) {
+      console.warn('clipboard read failed', e);
+    }
+  }
+  const manual = prompt('クリップボードを自動で読めませんでした。ここにURLを貼り付けてください。');
+  return manual || '';
+}
+
+async function pasteClipboardTo(targetId, options = {}) {
+  const target = $(targetId);
+  if (!target) return false;
+  const text = await readClipboardText();
+  if (!text.trim()) return false;
+  target.value = text.trim(); // 既存内容は消して置き換え
+  if (options.clearEnd) $('endUrl').value = '';
+  saveInputs();
+  if (!options.quiet) toast(targetId === 'startUrl' ? '開始URLを貼り付けました' : '終了URLを貼り付けました');
+  return true;
+}
+
+async function pasteClipboardSplitStartEnd() {
+  const text = await readClipboardText();
+  const urls = extractAllMediaUrls(text);
+  if (urls.length >= 2) {
+    $('startUrl').value = urls[0];
+    $('endUrl').value = urls[urls.length - 1];
+    saveInputs();
+    toast('先頭URLを開始、最後のURLを終了に貼り付けました');
+    return;
+  }
+  const cleaned = text.trim();
+  const lines = cleaned.split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
+  if (lines.length >= 2) {
+    $('startUrl').value = lines[0];
+    $('endUrl').value = lines[lines.length - 1];
+    saveInputs();
+    toast('先頭行を開始、最後の行を終了に貼り付けました');
+    return;
+  }
+  if (cleaned) {
+    $('startUrl').value = cleaned;
+    $('endUrl').value = '';
+    saveInputs();
+    toast('1件だけだったので開始URLに貼り付けました');
+  }
 }
 
 
