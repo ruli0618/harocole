@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const state = { found: [], scanning: false };
+const state = { found: [], scanning: false, extractedUrl: '' };
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)/i;
@@ -28,6 +28,37 @@ function wireEvents() {
     area.value = bookmarkletCode;
     if (!area.hidden) area.select();
   });
+  $('extractBtn').addEventListener('click', extractFromText);
+  $('useAsStartBtn').addEventListener('click', () => useExtractedUrl('startUrl'));
+  $('useAsEndBtn').addEventListener('click', () => useExtractedUrl('endUrl'));
+}
+
+
+function extractFromText() {
+  const text = $('extractText').value || '';
+  const matches = text.replace(/\\/g, '').match(new RegExp(mediaUrlRegex.source, 'ig')) || [];
+  const unique = [...new Set(matches.map((u) => u.replace(/[\"'<>]+$/g, '')))];
+  if (!unique.length) {
+    state.extractedUrl = '';
+    $('extractResult').hidden = false;
+    $('extractResult').textContent = 'frontimage URLが見つかりませんでした。ページのURLではなく、画像/動画URLやHTMLを貼ってください。';
+    $('useAsStartBtn').disabled = true;
+    $('useAsEndBtn').disabled = true;
+    toast('URLが見つかりませんでした');
+    return;
+  }
+  state.extractedUrl = unique[0];
+  $('extractResult').hidden = false;
+  $('extractResult').innerHTML = unique.map((u, i) => `${i + 1}. ${escapeHtml(u)}`).join('<br>');
+  $('useAsStartBtn').disabled = false;
+  $('useAsEndBtn').disabled = false;
+  copyText(state.extractedUrl).then(() => toast('URLを抽出してコピーしました'));
+}
+function useExtractedUrl(targetId) {
+  if (!state.extractedUrl) return;
+  $(targetId).value = state.extractedUrl;
+  saveInputs();
+  toast(targetId === 'startUrl' ? '開始URLに入れました' : '終了URLに入れました');
 }
 
 function restoreInputs() {
@@ -209,7 +240,8 @@ function renderResults() {
       <div class="itemActions">
         <button type="button" data-copy="${encodeURIComponent(item.url)}">コピー</button>
         <a href="${item.url}" target="_blank" rel="noopener">開く</a>
-        <a href="${item.url}" download="${escapeAttr(name.split('/').pop())}" target="_blank" rel="noopener">保存</a>
+        <button type="button" data-save="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}">保存</button>
+        <button type="button" data-sharefile="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}">共有保存</button>
       </div>
     </article>`;
   }).join('');
@@ -220,6 +252,64 @@ function renderResults() {
       toast('URLをコピーしました');
     });
   });
+  document.querySelectorAll('[data-save]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await saveOne(decodeURIComponent(btn.dataset.save), btn.dataset.filename || 'orical_card');
+    });
+  });
+  document.querySelectorAll('[data-sharefile]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await shareOneFile(decodeURIComponent(btn.dataset.sharefile), btn.dataset.filename || 'orical_card');
+    });
+  });
+}
+
+
+async function fetchBlob(url) {
+  const res = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.blob();
+}
+async function saveOne(url, filename) {
+  try {
+    toast('保存用ファイルを取得中...');
+    const blob = await fetchBlob(url);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    toast('保存を開始しました');
+  } catch (e) {
+    await copyText(url);
+    window.open(url, '_blank', 'noopener');
+    toast('直接保存できないためURLをコピーして開きました');
+  }
+}
+async function shareOneFile(url, filename) {
+  try {
+    toast('共有用ファイルを取得中...');
+    const blob = await fetchBlob(url);
+    const file = new File([blob], filename, { type: blob.type || guessMime(filename) });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      toast('共有を開きました');
+    } else {
+      await saveOne(url, filename);
+    }
+  } catch (e) {
+    await copyText(url);
+    toast('共有保存できませんでした。URLをコピーしました');
+  }
+}
+function guessMime(filename) {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  return 'image/jpeg';
 }
 
 async function copyAll() {
@@ -248,9 +338,7 @@ async function makeZip() {
     const item = state.found[i];
     $('summary').textContent = `ZIP用に取得中 ${i + 1}/${state.found.length}...`;
     try {
-      const res = await fetch(item.url, { mode: 'cors', credentials: 'omit' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
+      const blob = await fetchBlob(item.url);
       zip.file(filenameFor(item), blob);
       ok++;
     } catch (e) {

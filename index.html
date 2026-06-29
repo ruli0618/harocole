@@ -54,20 +54,25 @@
 
     <section class="card">
       <h2>2. 詳細ページからURLを拾う補助</h2>
-      <p>スマホで拡張機能が使えない場合は、下のブックマークレットを使うと詳細ページ上でカードURLを抽出しやすくなります。</p>
+      <p>ブックマークレットが別アプリ/拡張のページに飛ばされる場合があるため、手動貼り付けでも抽出できるようにしました。</p>
+
+      <label for="extractText">ページ本文・HTML・共有テキストを貼り付け</label>
+      <textarea id="extractText" rows="4" placeholder="ここにハロコレ詳細ページのHTMLや、コピーしたテキストを貼ると frontimage URL を探します"></textarea>
       <div class="actions">
-        <button id="copyBookmarklet" class="secondary">抽出ブックマークレットをコピー</button>
-        <button id="showBookmarklet" class="ghost">中身を表示</button>
+        <button id="extractBtn" class="secondary">URLを抽出</button>
+        <button id="useAsStartBtn" class="ghost" disabled>開始URLへ入れる</button>
+        <button id="useAsEndBtn" class="ghost" disabled>終了URLへ入れる</button>
       </div>
-      <textarea id="bookmarkletText" rows="4" readonly hidden></textarea>
+      <div id="extractResult" class="urlBox" hidden></div>
+
       <details>
-        <summary>スマホでの使い方</summary>
-        <ol>
-          <li>このWebアプリをブックマークする</li>
-          <li>ブックマーク編集でURL欄をコピーしたブックマークレットに差し替える</li>
-          <li>ハロコレのカード詳細ページで、そのブックマークを開く</li>
-          <li>カードURLがコピーされるので、このWebアプリに貼る</li>
-        </ol>
+        <summary>ブックマークレットも使う場合</summary>
+        <p>iPhoneで「Open bookmarks in a new tab」系の拡張を使っていると、javascriptのブックマークが拡張ページに置き換えられて失敗することがあります。その場合は上の手動貼り付けを使ってください。</p>
+        <div class="actions">
+          <button id="copyBookmarklet" class="secondary">抽出ブックマークレットをコピー</button>
+          <button id="showBookmarklet" class="ghost">中身を表示</button>
+        </div>
+        <textarea id="bookmarkletText" rows="4" readonly hidden></textarea>
       </details>
     </section>
 
