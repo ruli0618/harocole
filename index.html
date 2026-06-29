@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2563eb" />
-  <title>ハロコレ URL保存サポーター</title>
+  <title>ハロコレ URL保存サポーター v5</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="style.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -24,7 +24,7 @@
       <h2>できること / 注意</h2>
       <p>WebアプリはChrome拡張のように他サイトへ自動でボタンを差し込めません。代わりに、URLを貼って検出・一括コピー・ZIP保存補助を行います。</p>
       <p>動画はiPhoneの仕様上、写真アプリへ完全自動保存はできません。今回の版では「動画保存」ボタンで共有シートを開き、再生画面を開かずに「ビデオを保存」または「ファイルに保存」を選びやすくしています。</p>
-      <p>「開く」で再生ページへ移動して戻った時も、直前の検出結果を自動復元します。保存時はWebアプリ側で取得し直したファイルに現在時刻の更新日時を付けます。</p>
+      <p>「開く」で再生ページへ移動して戻った時も、直前の検出結果を自動復元します。保存時はWebアプリ側で取得し直したファイルに現在時刻の更新日時を付けます。動画はMP4内部の作成日時メタデータも可能な範囲で現在時刻に書き換えます。</p>
     </section>
 
     <section class="card">

@@ -1,4 +1,4 @@
-const CACHE = 'orical-smart-webapp-v4-keep-state-now-timestamp';
+const CACHE = 'orical-smart-webapp-v5-video-metadata-now';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', (event) => {

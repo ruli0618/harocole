@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v4-keep-state';
+const RESULTS_KEY = 'orical-web-results-v5-video-metadata-now';
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
@@ -387,7 +387,8 @@ async function saveOne(url, filename, ext = '') {
   const video = isVideo(ext) || isVideo(filename) || isVideo(url);
   try {
     toast(video ? '動画ファイルを取得中...' : '保存用ファイルを取得中...');
-    const blob = await fetchBlob(url);
+    const rawBlob = await fetchBlob(url);
+    const blob = await normalizeBlobForSave(rawBlob, filename, ext);
     if (video) {
       const shared = await shareBlob(blob, filename, true);
       if (shared) return;
@@ -409,7 +410,8 @@ async function saveOne(url, filename, ext = '') {
 async function shareOneFile(url, filename, ext = '') {
   try {
     toast('共有用ファイルを取得中...');
-    const blob = await fetchBlob(url);
+    const rawBlob = await fetchBlob(url);
+    const blob = await normalizeBlobForSave(rawBlob, filename, ext);
     const shared = await shareBlob(blob, filename, false);
     if (!shared) {
       await copyText(url);
@@ -455,6 +457,94 @@ function guessMime(filename) {
   return 'image/jpeg';
 }
 
+
+async function normalizeBlobForSave(blob, filename, ext = '') {
+  const video = isVideo(ext) || isVideo(filename);
+  if (!video) return makeCurrentFile(blob, filename);
+  const patched = await rewriteMp4DatesToNow(blob, filename).catch((e) => {
+    console.warn('MP4 date patch failed:', e);
+    return blob;
+  });
+  return makeCurrentFile(patched, filename);
+}
+
+async function rewriteMp4DatesToNow(blob, filename = '') {
+  if (!/mp4$/i.test(filename) && !/^video\/mp4/i.test(blob.type || '')) return blob;
+  const buf = await blob.arrayBuffer();
+  const data = new Uint8Array(buf);
+  const view = new DataView(buf);
+  const now = Math.floor(Date.now() / 1000) + 2082844800; // Unix epoch -> QuickTime epoch
+  let patched = 0;
+
+  const containers = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl', 'edts', 'dinf', 'udta', 'meta', 'ilst']);
+  const dateBoxes = new Set(['mvhd', 'tkhd', 'mdhd']);
+
+  function readType(pos) {
+    return String.fromCharCode(data[pos], data[pos + 1], data[pos + 2], data[pos + 3]);
+  }
+  function getBoxSize(pos, end) {
+    if (pos + 8 > end) return null;
+    let size = view.getUint32(pos);
+    let header = 8;
+    if (size === 1) {
+      if (pos + 16 > end) return null;
+      const high = view.getUint32(pos + 8);
+      const low = view.getUint32(pos + 12);
+      size = high * 4294967296 + low;
+      header = 16;
+    } else if (size === 0) {
+      size = end - pos;
+    }
+    if (!Number.isFinite(size) || size < header || pos + size > end) return null;
+    return { size, header };
+  }
+  function setUint64(pos, value) {
+    const high = Math.floor(value / 4294967296);
+    const low = value >>> 0;
+    view.setUint32(pos, high);
+    view.setUint32(pos + 4, low);
+  }
+  function patchDateBox(pos, header) {
+    if (pos + header + 20 > data.length) return;
+    const version = view.getUint8(pos + header);
+    const base = pos + header + 4;
+    if (version === 1) {
+      if (base + 16 <= data.length) {
+        setUint64(base, now);
+        setUint64(base + 8, now);
+        patched += 2;
+      }
+    } else {
+      if (base + 8 <= data.length && now <= 0xffffffff) {
+        view.setUint32(base, now);
+        view.setUint32(base + 4, now);
+        patched += 2;
+      }
+    }
+  }
+  function walk(start, end) {
+    let pos = start;
+    while (pos + 8 <= end) {
+      const info = getBoxSize(pos, end);
+      if (!info) break;
+      const type = readType(pos + 4);
+      if (dateBoxes.has(type)) {
+        patchDateBox(pos, info.header);
+      }
+      if (containers.has(type)) {
+        let childStart = pos + info.header;
+        if (type === 'meta') childStart += 4; // skip version/flags
+        if (childStart < pos + info.size) walk(childStart, pos + info.size);
+      }
+      pos += info.size;
+    }
+  }
+
+  walk(0, data.length);
+  if (!patched) return blob;
+  return new Blob([data], { type: blob.type || 'video/mp4' });
+}
+
 async function copyAll() {
   const text = state.found.map((item) => item.url).join('\n');
   await copyText(text);
@@ -481,8 +571,10 @@ async function makeZip() {
     const item = state.found[i];
     $('summary').textContent = `ZIP用に取得中 ${i + 1}/${state.found.length}...`;
     try {
-      const blob = await fetchBlob(item.url);
-      zip.file(filenameFor(item), blob, { date: new Date() });
+      const rawBlob = await fetchBlob(item.url);
+      const name = filenameFor(item);
+      const blob = await normalizeBlobForSave(rawBlob, name, item.ext);
+      zip.file(name, blob, { date: new Date() });
       ok++;
     } catch (e) {
       ng++;
