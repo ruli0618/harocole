@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v15-bulk-save';
+const RESULTS_KEY = 'orical-web-results-v16-split-bulk-save';
 const HELLOCOLLE_DEFAULT_URL = 'https://helloproject.orical.jp/mypage';
 const HELLOCOLLE_URL_KEY = 'orical-hellocolle-open-url';
 
@@ -89,6 +89,10 @@ function wireEvents() {
   $('copyAllBtn').addEventListener('click', copyAll);
   $('shareBtn').addEventListener('click', shareAll);
   $('bulkShareFilesBtn').addEventListener('click', bulkShareFiles);
+  const splitBulkBtn = $('splitBulkBtn');
+  if (splitBulkBtn) splitBulkBtn.addEventListener('click', renderSplitBulkPanel);
+  const batchSize = $('batchSize');
+  if (batchSize) batchSize.addEventListener('change', renderSplitBulkPanel);
   $('bulkSaveBtn').addEventListener('click', bulkDownloadFiles);
   $('zipBtn').addEventListener('click', makeZip);
   const copyBookmarkletBtn = $('copyBookmarklet');
@@ -645,6 +649,7 @@ function renderResults() {
   $('copyAllBtn').disabled = found.length === 0;
   $('shareBtn').disabled = found.length === 0 || !navigator.share;
   $('bulkShareFilesBtn').disabled = found.length === 0;
+  if ($('splitBulkBtn')) $('splitBulkBtn').disabled = found.length === 0;
   $('bulkSaveBtn').disabled = found.length === 0;
   $('zipBtn').disabled = found.length === 0;
 
@@ -876,11 +881,13 @@ function basenameFor(item) {
 
 function setBulkButtonsBusy(busy, mainLabel = '複数一括保存', saveLabel = '個別保存を連続実行') {
   const bulkShareBtn = $('bulkShareFilesBtn');
+  const splitBulkBtn = $('splitBulkBtn');
   const bulkSaveBtn = $('bulkSaveBtn');
   const zipBtn = $('zipBtn');
   const scanBtn = $('scanBtn');
-  [bulkShareBtn, bulkSaveBtn, zipBtn, scanBtn].forEach((btn) => { if (btn) btn.disabled = busy || (btn !== scanBtn && state.found.length === 0); });
+  [bulkShareBtn, splitBulkBtn, bulkSaveBtn, zipBtn, scanBtn].forEach((btn) => { if (btn) btn.disabled = busy || (btn !== scanBtn && state.found.length === 0); });
   if (bulkShareBtn) bulkShareBtn.textContent = busy ? mainLabel : '複数一括保存';
+  if (splitBulkBtn) splitBulkBtn.textContent = busy ? '分割準備中...' : '分割一括保存';
   if (bulkSaveBtn) bulkSaveBtn.textContent = busy ? saveLabel : '個別保存を連続実行';
 }
 
@@ -910,6 +917,119 @@ async function buildFilesForBulkSave() {
   return { files, ok, ng };
 }
 
+
+function getBatchSize() {
+  const size = Number($('batchSize')?.value || 3);
+  return Number.isFinite(size) && size > 0 ? Math.min(size, 10) : 3;
+}
+
+function renderSplitBulkPanel() {
+  if (!state.found.length) return;
+  const options = $('batchOptions');
+  const panel = $('batchPanel');
+  if (!panel) return;
+  const size = getBatchSize();
+  const chunks = [];
+  for (let i = 0; i < state.found.length; i += size) {
+    chunks.push({ start: i, end: Math.min(i + size, state.found.length) });
+  }
+  if (options) options.hidden = false;
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="batchNotice">
+      <strong>分割保存モード</strong>
+      <p class="hint">下のボタンを上から順番に押してください。1回保存したらアプリに戻って、次の組を押す形です。</p>
+    </div>
+    <div class="batchButtons">
+      ${chunks.map((c, idx) => `<button type="button" class="batchSaveBtn" data-start="${c.start}" data-end="${c.end}">${idx + 1}組目を保存（${c.start + 1}〜${c.end}件目）</button>`).join('')}
+    </div>`;
+  panel.querySelectorAll('.batchSaveBtn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const start = Number(btn.dataset.start);
+      const end = Number(btn.dataset.end);
+      await shareFilesRange(start, end, btn);
+    });
+  });
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function buildFilesForRange(start, end) {
+  const files = [];
+  let ok = 0;
+  let ng = 0;
+  const total = Math.max(0, end - start);
+  for (let i = start; i < end; i++) {
+    const item = state.found[i];
+    if (!item) continue;
+    const filename = basenameFor(item);
+    $('summary').textContent = `分割保存用に取得中 ${i - start + 1}/${total}...`;
+    try {
+      const rawBlob = await fetchBlob(item.url);
+      const normalized = await normalizeBlobForSave(rawBlob, filename, item.ext);
+      const file = normalized instanceof File
+        ? new File([normalized], filename, { type: normalized.type || guessMime(filename), lastModified: Date.now() })
+        : makeCurrentFile(normalized, filename);
+      files.push(file);
+      ok++;
+    } catch (e) {
+      console.warn('split bulk file fetch failed', item.url, e);
+      ng++;
+    }
+    await sleep(80);
+  }
+  $('summary').textContent = `${state.found.length}件あります`;
+  return { files, ok, ng };
+}
+
+async function shareFilesRange(start, end, clickedButton = null) {
+  if (!navigator.share || !navigator.canShare) {
+    toast('このブラウザはファイル共有に対応していません。ZIP作成を使ってください。');
+    return;
+  }
+  const originalText = clickedButton?.textContent;
+  if (clickedButton) {
+    clickedButton.disabled = true;
+    clickedButton.textContent = '取得中...';
+  }
+  setBulkButtonsBusy(true, '分割保存中...', '分割保存中...');
+  try {
+    const { files, ok, ng } = await buildFilesForRange(start, end);
+    if (!files.length) {
+      toast('保存用ファイルを取得できませんでした');
+      return;
+    }
+    if (!navigator.canShare({ files })) {
+      if (files.length > 1) {
+        toast('この組でも大きすぎます。分割数を「1件ずつ」にしてください。');
+      } else {
+        toast('このファイルは共有保存できませんでした。個別の「動画保存」も試してください。');
+      }
+      return;
+    }
+    await navigator.share({
+      files,
+      title: `ハロコレ保存 ${start + 1}-${end}`,
+      text: '保存先で「ビデオを保存」または「ファイルに保存」を選んでください。'
+    });
+    if (clickedButton) {
+      clickedButton.classList.add('done');
+      clickedButton.textContent = `保存済み目安（${start + 1}〜${end}件目）`;
+    }
+    toast(`共有シートを開きました / 成功${ok}件${ng ? `・失敗${ng}件` : ''}`);
+  } catch (e) {
+    console.warn('split bulk share failed', e);
+    toast('分割保存を開けませんでした。分割数を減らしてください。');
+    if (clickedButton && originalText) clickedButton.textContent = originalText;
+  } finally {
+    setBulkButtonsBusy(false);
+    $('summary').textContent = `${state.found.length}件あります`;
+    if (clickedButton && !clickedButton.classList.contains('done')) {
+      clickedButton.disabled = false;
+      if (originalText) clickedButton.textContent = originalText;
+    }
+  }
+}
+
 async function bulkShareFiles() {
   if (!state.found.length) return;
   if (!navigator.share || !navigator.canShare) {
@@ -924,7 +1044,8 @@ async function bulkShareFiles() {
       return;
     }
     if (!navigator.canShare({ files })) {
-      toast('件数または容量が大きくて一括共有できません。件数を減らすかZIP作成を使ってください。');
+      renderSplitBulkPanel();
+      toast('一括共有できませんでした。分割一括保存を使ってください。');
       return;
     }
     await navigator.share({
@@ -935,7 +1056,8 @@ async function bulkShareFiles() {
     toast(`共有シートを開きました / 成功${ok}件${ng ? `・失敗${ng}件` : ''}`);
   } catch (e) {
     console.warn('bulk share failed', e);
-    toast('一括保存を開けませんでした。件数を減らすかZIP作成を使ってください。');
+    renderSplitBulkPanel();
+    toast('一括保存を開けませんでした。分割一括保存を使ってください。');
   } finally {
     setBulkButtonsBusy(false);
     $('summary').textContent = `${state.found.length}件あります`;
