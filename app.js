@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v13-dynamic-mypage';
+const RESULTS_KEY = 'orical-web-results-v14-bottom-tools';
 const HELLOCOLLE_DEFAULT_URL = 'https://helloproject.orical.jp/mypage';
 const HELLOCOLLE_URL_KEY = 'orical-hellocolle-open-url';
 

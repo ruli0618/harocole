@@ -196,6 +196,8 @@ progress { width: 120px; height: 12px; }
 }
 
 
+.utilityCard { border-color: rgba(37, 99, 235, .28); }
+
 .helloTargetBox {
   margin-top: 14px;
   padding: 12px;
@@ -205,3 +207,25 @@ progress { width: 120px; height: 12px; }
 }
 .helloTargetBox .actions { margin-top: 10px; }
 .helloTargetBox input { background: #fff; }
+
+
+/* v14: よく使う検出ボタンを上側で目立たせる */
+.card > .actions:has(#scanBtn) {
+  margin-top: 18px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(219, 234, 254, .55);
+  border: 1px solid rgba(37, 99, 235, .14);
+}
+.card > .actions:has(#scanBtn) #scanBtn {
+  flex: 1 1 210px;
+  min-height: 54px;
+  font-size: 16px;
+}
+.card > .actions:has(#scanBtn) #clearBtn {
+  flex: 1 1 130px;
+}
+@media (max-width: 520px) {
+  .card > .actions:has(#scanBtn) #scanBtn,
+  .card > .actions:has(#scanBtn) #clearBtn { width: 100%; flex-basis: 100%; }
+}

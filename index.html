@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#ff7dae" />
-  <title>ハロコレ 画像保存サポーター v13</title>
+  <title>ハロコレ 画像保存サポーター v14</title>
   <link rel="manifest" href="manifest.webmanifest?v=13" />
   <link rel="icon" href="favicon.png?v=13" type="image/png" />
   <link rel="apple-touch-icon" href="icon-180.png?v=13" />
@@ -17,7 +17,7 @@
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
       <h1>ハロコレ 画像保存サポーター</h1>
-      <p class="lead">ハロコレを開いて、取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。ハロコレを開く先は、配布先の人でも使いやすい共通マイページURLにしています。</p>
+      <p class="lead">取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。よく使う検出ボタンを上側にまとめ、ハロコレを開く機能とショートカット追加は下側に移動しました。</p>
     </div>
   </header>
 
@@ -55,6 +55,35 @@
       </div>
 
 
+      <div class="actions">
+        <button id="scanBtn" class="primary">候補を検出 / 単体追加</button>
+        <button id="clearBtn" class="ghost">入力をクリア</button>
+      </div>
+      <p class="hint">開始URLだけなら単体モード、開始URL＋終了URLなら連番検出モードになります。動画1本だけでもこのボタンで検出できます。</p>
+    </section>
+
+    <section class="card resultCard" id="resultCard" hidden>
+      <div class="resultHead">
+        <div>
+          <h2>2. 検出結果</h2>
+          <p id="summary" class="summary">未検出</p>
+        </div>
+        <progress id="progress" value="0" max="100" hidden></progress>
+      </div>
+
+      <div class="actions stickyActions">
+        <button id="copyAllBtn" class="secondary" disabled>URL一覧コピー</button>
+        <button id="shareBtn" class="secondary" disabled>共有</button>
+        <button id="zipBtn" class="primary" disabled>ZIP作成</button>
+      </div>
+
+      <div id="results" class="results"></div>
+    </section>
+
+
+    <section class="card utilityCard" id="helloOpenCard">
+      <h2>3. ハロコレを開く</h2>
+      <p class="hint">検出や保存を使う時は、先に上の入力欄でURLを貼り付けてください。ハロコレを開く機能は補助用として下側にまとめています。</p>
       <div class="helloTargetBox">
         <label for="helloUrl">ハロコレを開く先</label>
         <input id="helloUrl" type="url" placeholder="空欄ならログイン中ユーザーのマイページを開く共通URL" />
@@ -71,17 +100,12 @@
         <button id="copyHelloBtn" class="ghost" type="button">開くURLをコピー</button>
       </div>
 
-      <div class="actions">
-        <button id="scanBtn" class="primary">候補を検出 / 単体追加</button>
-        <button id="clearBtn" class="ghost">入力をクリア</button>
-      </div>
-      <p class="hint">開始URLだけなら単体モード、開始URL＋終了URLなら連番検出モードになります。開始と終了が逆だった時は、入れ替えボタンを使えます。</p>
-    </section>
 
+    </section>
     <section class="card shortcutCard" id="shortcutCard">
       <div class="sectionTitleRow">
         <div>
-          <h2>2. ショートカットを追加</h2>
+          <h2>4. ショートカットを追加</h2>
           <p class="hint">ハロコレ側で開いている画像/動画URLをコピーするためのiPhoneショートカット設定をまとめました。</p>
         </div>
       </div>
@@ -123,23 +147,6 @@
       </details>
     </section>
 
-    <section class="card resultCard" id="resultCard" hidden>
-      <div class="resultHead">
-        <div>
-          <h2>3. 検出結果</h2>
-          <p id="summary" class="summary">未検出</p>
-        </div>
-        <progress id="progress" value="0" max="100" hidden></progress>
-      </div>
-
-      <div class="actions stickyActions">
-        <button id="copyAllBtn" class="secondary" disabled>URL一覧コピー</button>
-        <button id="shareBtn" class="secondary" disabled>共有</button>
-        <button id="zipBtn" class="primary" disabled>ZIP作成</button>
-      </div>
-
-      <div id="results" class="results"></div>
-    </section>
   </main>
 
   <div id="toast" class="toast" hidden></div>
