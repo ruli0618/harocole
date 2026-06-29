@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
+const RESULTS_KEY = 'orical-web-results-v4-keep-state';
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
@@ -8,8 +9,19 @@ const bookmarkletCode = `javascript:(()=>{let h=document.documentElement.innerHT
 
 window.addEventListener('DOMContentLoaded', () => {
   restoreInputs();
-  registerSW();
   wireEvents();
+  restoreAppState();
+  registerSW();
+});
+
+window.addEventListener('pagehide', () => {
+  if (state.found.length) saveAppState();
+});
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && state.found.length) saveAppState();
+});
+window.addEventListener('pageshow', () => {
+  if (!state.found.length) restoreAppState(false);
 });
 
 function wireEvents() {
@@ -80,6 +92,40 @@ function restoreInputs() {
 }
 function saveInputs() {
   LS_KEYS.forEach((key) => localStorage.setItem(`orical-web-${key}`, $(key).value));
+  if (state.found.length) saveAppState();
+}
+function saveAppState() {
+  try {
+    const payload = {
+      found: state.found,
+      inputs: Object.fromEntries(LS_KEYS.map((key) => [key, $(key)?.value || ''])),
+      scrollY: window.scrollY || 0,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(RESULTS_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.warn('state save failed', e);
+  }
+}
+function restoreAppState(showToast = true) {
+  try {
+    const raw = localStorage.getItem(RESULTS_KEY);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    if (payload.inputs) {
+      LS_KEYS.forEach((key) => {
+        if (payload.inputs[key] && !$(key).value) $(key).value = payload.inputs[key];
+      });
+    }
+    const found = Array.isArray(payload.found) ? payload.found.filter((item) => item && item.url && item.ext) : [];
+    if (!found.length) return;
+    state.found = found;
+    renderResults();
+    if (payload.scrollY) setTimeout(() => window.scrollTo(0, payload.scrollY), 60);
+    if (showToast) toast('前回の検出結果を復元しました');
+  } catch (e) {
+    console.warn('state restore failed', e);
+  }
 }
 function clearInputs() {
   LS_KEYS.forEach((key) => {
@@ -87,8 +133,9 @@ function clearInputs() {
     localStorage.removeItem(`orical-web-${key}`);
   });
   state.found = [];
+  localStorage.removeItem(RESULTS_KEY);
   renderResults();
-  toast('入力をクリアしました');
+  toast('入力と検出結果をクリアしました');
 }
 
 function parseSingleItem(url, fallbackIndex = 1) {
@@ -188,6 +235,7 @@ async function scan() {
     $('scanBtn').disabled = false;
     $('scanBtn').textContent = '候補を検出 / 単体追加';
     renderResults();
+    saveAppState();
     toast(`${state.found.length}件を追加しました`);
     return;
   }
@@ -203,7 +251,10 @@ async function scan() {
     const valid = results.find(Boolean);
     if (valid) {
       state.found.push(valid);
-      if (state.found.length <= 12 || state.found.length % 10 === 0) renderResults();
+      if (state.found.length <= 12 || state.found.length % 10 === 0) {
+        renderResults();
+        saveAppState();
+      }
     }
     await sleep(35);
   }
@@ -213,6 +264,7 @@ async function scan() {
   $('scanBtn').disabled = false;
   $('scanBtn').textContent = '候補を検出 / 単体追加';
   renderResults();
+  saveAppState();
   toast(`${state.found.length}件見つかりました`);
 }
 
@@ -282,7 +334,7 @@ function renderResults() {
       <div class="urlBox">${escapeHtml(item.url)}</div>
       <div class="itemActions">
         <button type="button" data-copy="${encodeURIComponent(item.url)}">コピー</button>
-        <a href="${item.url}" target="_blank" rel="noopener">開く</a>
+        <button type="button" data-open="${encodeURIComponent(item.url)}">開く</button>
         <button type="button" data-save="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}" data-ext="${item.ext}">${isVideo ? '動画保存' : '保存'}</button>
         <button type="button" data-sharefile="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}" data-ext="${item.ext}">共有保存</button>
       </div>
@@ -295,6 +347,11 @@ function renderResults() {
       toast('URLをコピーしました');
     });
   });
+  document.querySelectorAll('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      openMedia(decodeURIComponent(btn.dataset.open));
+    });
+  });
   document.querySelectorAll('[data-save]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       await saveOne(decodeURIComponent(btn.dataset.save), btn.dataset.filename || 'orical_card', btn.dataset.ext || '');
@@ -305,6 +362,17 @@ function renderResults() {
       await shareOneFile(decodeURIComponent(btn.dataset.sharefile), btn.dataset.filename || 'orical_card', btn.dataset.ext || '');
     });
   });
+}
+
+function openMedia(url) {
+  saveAppState();
+  toast('検出結果を保存してから開きます');
+  try {
+    const w = window.open(url, '_blank', 'noopener');
+    if (!w) window.location.href = url;
+  } catch (e) {
+    window.location.href = url;
+  }
 }
 
 async function fetchBlob(url) {
@@ -354,7 +422,7 @@ async function shareOneFile(url, filename, ext = '') {
 }
 async function shareBlob(blob, filename, preferVideoMessage) {
   const type = blob.type || guessMime(filename);
-  const file = new File([blob], filename, { type });
+  const file = makeCurrentFile(blob, filename);
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     await navigator.share({ files: [file], title: filename, text: preferVideoMessage ? '保存先で「ビデオを保存」または「ファイルに保存」を選んでください。' : undefined });
     toast(preferVideoMessage ? '共有シートを開きました' : '共有を開きました');
@@ -362,9 +430,14 @@ async function shareBlob(blob, filename, preferVideoMessage) {
   }
   return false;
 }
+function makeCurrentFile(blob, filename) {
+  const type = blob.type || guessMime(filename);
+  return new File([blob], filename, { type, lastModified: Date.now() });
+}
 async function downloadBlob(blob, filename) {
   const a = document.createElement('a');
-  const objectUrl = URL.createObjectURL(blob);
+  const file = blob instanceof File ? blob : makeCurrentFile(blob, filename);
+  const objectUrl = URL.createObjectURL(file);
   a.href = objectUrl;
   a.download = filename;
   a.rel = 'noopener';
@@ -409,7 +482,7 @@ async function makeZip() {
     $('summary').textContent = `ZIP用に取得中 ${i + 1}/${state.found.length}...`;
     try {
       const blob = await fetchBlob(item.url);
-      zip.file(filenameFor(item), blob);
+      zip.file(filenameFor(item), blob, { date: new Date() });
       ok++;
     } catch (e) {
       ng++;
