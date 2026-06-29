@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v5-video-metadata-now';
+const RESULTS_KEY = 'orical-web-results-v6-swap-clean';
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
@@ -28,22 +28,30 @@ function wireEvents() {
   LS_KEYS.forEach((key) => $(key).addEventListener('input', saveInputs));
   $('scanBtn').addEventListener('click', scan);
   $('clearBtn').addEventListener('click', clearInputs);
+  const swapBtn = $('swapBtn');
+  if (swapBtn) swapBtn.addEventListener('click', swapStartEnd);
   $('copyAllBtn').addEventListener('click', copyAll);
   $('shareBtn').addEventListener('click', shareAll);
   $('zipBtn').addEventListener('click', makeZip);
-  $('copyBookmarklet').addEventListener('click', async () => {
+  const copyBookmarkletBtn = $('copyBookmarklet');
+  if (copyBookmarkletBtn) copyBookmarkletBtn.addEventListener('click', async () => {
     await copyText(bookmarkletCode);
     toast('抽出ブックマークレットをコピーしました');
   });
-  $('showBookmarklet').addEventListener('click', () => {
+  const showBookmarkletBtn = $('showBookmarklet');
+  if (showBookmarkletBtn) showBookmarkletBtn.addEventListener('click', () => {
     const area = $('bookmarkletText');
+    if (!area) return;
     area.hidden = !area.hidden;
     area.value = bookmarkletCode;
     if (!area.hidden) area.select();
   });
-  $('extractBtn').addEventListener('click', extractFromText);
-  $('useAsStartBtn').addEventListener('click', () => useExtractedUrl('startUrl'));
-  $('useAsEndBtn').addEventListener('click', () => useExtractedUrl('endUrl'));
+  const extractBtn = $('extractBtn');
+  if (extractBtn) extractBtn.addEventListener('click', extractFromText);
+  const useAsStartBtn = $('useAsStartBtn');
+  if (useAsStartBtn) useAsStartBtn.addEventListener('click', () => useExtractedUrl('startUrl'));
+  const useAsEndBtn = $('useAsEndBtn');
+  if (useAsEndBtn) useAsEndBtn.addEventListener('click', () => useExtractedUrl('endUrl'));
 }
 
 function extractAllMediaUrls(text) {
@@ -138,6 +146,17 @@ function clearInputs() {
   toast('入力と検出結果をクリアしました');
 }
 
+function swapStartEnd() {
+  const start = $('startUrl');
+  const end = $('endUrl');
+  if (!start || !end) return;
+  const tmp = start.value;
+  start.value = end.value;
+  end.value = tmp;
+  saveInputs();
+  toast('開始URLと終了URLを入れ替えました');
+}
+
 function parseSingleItem(url, fallbackIndex = 1) {
   const clean = cleanUrl(url);
   const pathOnly = clean.split('?')[0];
@@ -174,7 +193,7 @@ function parseInput(rawStart, rawEnd) {
   const startNum = parseInt(startNumStr, 10);
   const endNum = parseInt(endMatch[1], 10);
   if (Number.isNaN(startNum) || Number.isNaN(endNum)) throw new Error('カード番号を読み取れませんでした。');
-  if (startNum > endNum) throw new Error('開始番号と終了番号の順序が逆です。');
+  if (startNum > endNum) throw new Error('開始番号と終了番号の順序が逆です。入れ替えボタンを押してください。');
   if ((endNum - startNum) > 800) throw new Error('範囲が広すぎます。スマホでは重くなるので800件以内にしてください。');
 
   const baseBeforeStar = startUrl.split(/\/star_\d+/i)[0];

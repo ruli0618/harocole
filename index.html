@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2563eb" />
-  <title>ハロコレ URL保存サポーター v5</title>
+  <title>ハロコレ URL保存サポーター v6</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="style.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -15,23 +15,20 @@
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
       <h1>ハロコレ URL保存サポーター</h1>
-      <p class="lead">カードの <code>frontimage</code> URLを貼るだけで、単体動画の保存補助・連番候補の検出・コピーができます。開く操作後に戻っても検出結果を復元します。</p>
+      <p class="lead">カードの <code>frontimage</code> URLを貼って、単体動画の保存補助・連番候補の検出・コピーができます。</p>
     </div>
   </header>
 
   <main>
-    <section class="card warning">
-      <h2>できること / 注意</h2>
-      <p>WebアプリはChrome拡張のように他サイトへ自動でボタンを差し込めません。代わりに、URLを貼って検出・一括コピー・ZIP保存補助を行います。</p>
-      <p>動画はiPhoneの仕様上、写真アプリへ完全自動保存はできません。今回の版では「動画保存」ボタンで共有シートを開き、再生画面を開かずに「ビデオを保存」または「ファイルに保存」を選びやすくしています。</p>
-      <p>「開く」で再生ページへ移動して戻った時も、直前の検出結果を自動復元します。保存時はWebアプリ側で取得し直したファイルに現在時刻の更新日時を付けます。動画はMP4内部の作成日時メタデータも可能な範囲で現在時刻に書き換えます。</p>
-    </section>
-
     <section class="card">
       <h2>1. カードURLを指定</h2>
       <p class="hint">終了カードURLは空欄でもOKです。開始URLだけの場合は、その動画/画像1件だけを保存対象にします。</p>
       <label for="startUrl">開始カードURL</label>
       <textarea id="startUrl" rows="3" placeholder="https://cdn.orical.jp/cards/.../star_5/frontimage/13000001_xxxxx.mp4"></textarea>
+
+      <div class="actions compactActions">
+        <button id="swapBtn" class="ghost" type="button">開始URLと終了URLを入れ替え</button>
+      </div>
 
       <label for="endUrl">終了カードURL</label>
       <textarea id="endUrl" rows="3" placeholder="空欄OK。連番検出したい時だけ終了側URLを入れてください"></textarea>
@@ -51,37 +48,13 @@
         <button id="scanBtn" class="primary">候補を検出 / 単体追加</button>
         <button id="clearBtn" class="ghost">入力をクリア</button>
       </div>
-      <p class="hint">開始URLだけなら単体モード、開始URL＋終了URLなら連番検出モードになります。ページ本文やHTMLを貼っても最初に見つかったURLを拾います。</p>
-    </section>
-
-    <section class="card">
-      <h2>2. 詳細ページからURLを拾う補助</h2>
-      <p>ブックマークレットが別アプリ/拡張のページに飛ばされる場合があるため、手動貼り付けでも抽出できるようにしました。</p>
-
-      <label for="extractText">ページ本文・HTML・共有テキストを貼り付け</label>
-      <textarea id="extractText" rows="4" placeholder="ここにハロコレ詳細ページのHTMLや、コピーしたテキストを貼ると frontimage URL を探します"></textarea>
-      <div class="actions">
-        <button id="extractBtn" class="secondary">URLを抽出</button>
-        <button id="useAsStartBtn" class="ghost" disabled>開始URLへ入れる</button>
-        <button id="useAsEndBtn" class="ghost" disabled>終了URLへ入れる</button>
-      </div>
-      <div id="extractResult" class="urlBox" hidden></div>
-
-      <details>
-        <summary>ブックマークレットも使う場合</summary>
-        <p>iPhoneで「Open bookmarks in a new tab」系の拡張を使っていると、javascriptのブックマークが拡張ページに置き換えられて失敗することがあります。その場合は上の手動貼り付けを使ってください。</p>
-        <div class="actions">
-          <button id="copyBookmarklet" class="secondary">抽出ブックマークレットをコピー</button>
-          <button id="showBookmarklet" class="ghost">中身を表示</button>
-        </div>
-        <textarea id="bookmarkletText" rows="4" readonly hidden></textarea>
-      </details>
+      <p class="hint">開始URLだけなら単体モード、開始URL＋終了URLなら連番検出モードになります。開始と終了が逆だった時は、入れ替えボタンを使えます。</p>
     </section>
 
     <section class="card resultCard" id="resultCard" hidden>
       <div class="resultHead">
         <div>
-          <h2>3. 検出結果</h2>
+          <h2>2. 検出結果</h2>
           <p id="summary" class="summary">未検出</p>
         </div>
         <progress id="progress" value="0" max="100" hidden></progress>
