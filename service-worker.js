@@ -1,4 +1,4 @@
-const CACHE = 'orical-smart-webapp-v15-bulk-save';
+const CACHE = 'orical-smart-webapp-v17-auto-until-missing';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

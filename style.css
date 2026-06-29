@@ -231,7 +231,7 @@ progress { width: 120px; height: 12px; }
 }
 
 
-/* v15: 複数一括保存ボタンを目立たせる */
+/* v16: 複数一括保存・分割保存ボタンを目立たせる */
 .stickyActions #bulkShareFilesBtn {
   flex: 1 1 170px;
   min-height: 48px;
@@ -244,4 +244,83 @@ progress { width: 120px; height: 12px; }
 }
 @media (max-width: 520px) {
   .stickyActions button { width: 100%; flex-basis: 100%; }
+}
+
+
+/* v16: 分割一括保存 */
+.softPrimary { background: #7c3aed; color: #fff; }
+.softPrimary:hover { background: #6d28d9; }
+.batchOptions {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(124, 58, 237, .18);
+  border-radius: 18px;
+  background: rgba(245, 243, 255, .86);
+}
+.batchOptions label { margin-top: 0; }
+.batchOptions select {
+  width: 100%;
+  border: 1px solid #c4b5fd;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 16px;
+  background: white;
+  color: var(--text);
+}
+.batchPanel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(124, 58, 237, .20);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .92);
+}
+.batchNotice strong { color: #5b21b6; }
+.batchButtons {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.batchSaveBtn {
+  width: 100%;
+  border-radius: 16px;
+  background: #ede9fe;
+  color: #4c1d95;
+}
+.batchSaveBtn.done {
+  background: #dcfce7;
+  color: #166534;
+}
+.stickyActions #splitBulkBtn {
+  flex: 1 1 170px;
+  min-height: 48px;
+}
+
+/* v17: 開始URLだけから自動連番検索 */
+.autoScanBox {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(15, 118, 110, .18);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(240, 253, 250, .9), rgba(219, 234, 254, .72));
+}
+.autoScanBox h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #0f766e;
+}
+.autoScanBox select {
+  width: 100%;
+  border: 1px solid #99f6e4;
+  border-radius: 14px;
+  padding: 12px;
+  font-size: 16px;
+  background: white;
+  color: var(--text);
+}
+.autoScanBox #autoScanBtn {
+  width: 100%;
+  min-height: 52px;
+}
+@media (min-width: 720px) {
+  .autoScanBox #autoScanBtn { width: auto; min-width: 240px; }
 }

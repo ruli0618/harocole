@@ -4,20 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#ff7dae" />
-  <title>ハロコレ 画像保存サポーター v15</title>
-  <link rel="manifest" href="manifest.webmanifest?v=15" />
-  <link rel="icon" href="favicon.png?v=15" type="image/png" />
-  <link rel="apple-touch-icon" href="icon-180.png?v=15" />
-  <link rel="stylesheet" href="style.css?v=15" />
+  <title>ハロコレ 画像保存サポーター v17</title>
+  <link rel="manifest" href="manifest.webmanifest?v=17" />
+  <link rel="icon" href="favicon.png?v=17" type="image/png" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=17" />
+  <link rel="stylesheet" href="style.css?v=17" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="app.js?v=15"></script>
+  <script defer src="app.js?v=17"></script>
 </head>
 <body>
   <header class="hero">
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
       <h1>ハロコレ 画像保存サポーター</h1>
-      <p class="lead">取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。検出結果から複数ファイルをまとめて共有保存できるようにしました。</p>
+      <p class="lead">取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。検出結果から複数ファイルをまとめて共有保存・分割保存できます。開始URLだけから見つからなくなる所まで自動連番検索もできます。</p>
     </div>
   </header>
 
@@ -41,6 +41,29 @@
       <div class="actions compactActions pasteActions">
         <button id="pasteEndBtn" class="secondary" type="button">クリップボードを終了URLへ貼り付け</button>
         <button id="pasteBothBtn" class="ghost" type="button">複数行を開始/終了へ分けて貼り付け</button>
+      </div>
+
+      <div class="autoScanBox">
+        <h3>終了URLなしで自動連番検索</h3>
+        <p class="hint">開始URLの番号から順番に、★1〜★5 / jpg・mp4 / 枝番候補を確認し、見つからない番号が続いた所で自動停止します。</p>
+        <div class="grid2">
+          <div>
+            <label for="autoMissLimit">未検出が続いたら停止</label>
+            <select id="autoMissLimit">
+              <option value="1" selected>1件で停止（最短）</option>
+              <option value="2">2件連続で停止</option>
+              <option value="3">3件連続で停止（安全）</option>
+              <option value="5">5件連続で停止</option>
+            </select>
+          </div>
+          <div>
+            <label for="autoMaxCount">最大確認数</label>
+            <input id="autoMaxCount" type="number" min="1" max="1000" value="300" inputmode="numeric" />
+          </div>
+        </div>
+        <div class="actions compactActions">
+          <button id="autoScanBtn" class="secondary" type="button">開始URLから自動連番検索</button>
+        </div>
       </div>
 
       <div class="grid2">
@@ -75,9 +98,22 @@
         <button id="copyAllBtn" class="secondary" disabled>URL一覧コピー</button>
         <button id="shareBtn" class="secondary" disabled>共有</button>
         <button id="bulkShareFilesBtn" class="primary" disabled>複数一括保存</button>
+        <button id="splitBulkBtn" class="primary softPrimary" disabled>分割一括保存</button>
         <button id="bulkSaveBtn" class="secondary" disabled>個別保存を連続実行</button>
         <button id="zipBtn" class="ghost" disabled>ZIP作成</button>
       </div>
+
+      <div class="batchOptions" id="batchOptions" hidden>
+        <label for="batchSize">分割数</label>
+        <select id="batchSize">
+          <option value="1">1件ずつ（最も安定）</option>
+          <option value="2">2件ずつ</option>
+          <option value="3" selected>3件ずつ（おすすめ）</option>
+          <option value="5">5件ずつ</option>
+        </select>
+        <p class="hint">一括保存が失敗する場合は、ここに出る組ごとの保存ボタンを1つずつ押してください。14件なら3件ずつで5回に分けられます。</p>
+      </div>
+      <div id="batchPanel" class="batchPanel" hidden></div>
 
       <div id="results" class="results"></div>
     </section>

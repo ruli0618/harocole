@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v16-split-bulk-save';
+const RESULTS_KEY = 'orical-web-results-v17-auto-until-missing';
 const HELLOCOLLE_DEFAULT_URL = 'https://helloproject.orical.jp/mypage';
 const HELLOCOLLE_URL_KEY = 'orical-hellocolle-open-url';
 
@@ -46,7 +46,7 @@ const shortcutSetupText = `【ハロコレURL抽出ショートカット設定�
 ${shortcutJsCode}`;
 
 
-const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
+const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName', 'autoMissLimit', 'autoMaxCount'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
 const mediaUrlGlobalRegex = new RegExp(mediaUrlRegex.source, 'ig');
 const bookmarkletCode = `javascript:(()=>{let h=document.documentElement.innerHTML.replace(/\\+/g,'');let m=h.match(/https:\/\/cdn\\.orical\\.jp\/cards\/[^\\s"'\`<>]+?\/frontimage\/[^\\s"'\`<>]+?\\.(?:mp4|jpg|jpeg|png|webp)(?:\\?[^\\s"'\`<>]*)?/i);let u=m&&m[0];if(!u){alert('カードURLが見つかりませんでした');return}navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(u).then(()=>alert('カードURLをコピーしました\\n'+u)).catch(()=>prompt('コピーしてください',u)):prompt('コピーしてください',u)})();`;
@@ -83,6 +83,8 @@ function wireEvents() {
   const pasteBothBtn = $('pasteBothBtn');
   if (pasteBothBtn) pasteBothBtn.addEventListener('click', pasteClipboardSplitStartEnd);
   $('scanBtn').addEventListener('click', scan);
+  const autoScanBtn = $('autoScanBtn');
+  if (autoScanBtn) autoScanBtn.addEventListener('click', () => scan({ auto: true }));
   $('clearBtn').addEventListener('click', clearInputs);
   const swapBtn = $('swapBtn');
   if (swapBtn) swapBtn.addEventListener('click', swapStartEnd);
@@ -401,13 +403,33 @@ function openHellocolle() {
 
 function restoreInputs() {
   LS_KEYS.forEach((key) => {
+    const el = $(key);
+    if (!el) return;
     const v = localStorage.getItem(`orical-web-${key}`);
-    if (v) $(key).value = v;
+    if (v) el.value = v;
   });
+  applyAutoDefaultsIfEmpty();
 }
 function saveInputs() {
-  LS_KEYS.forEach((key) => localStorage.setItem(`orical-web-${key}`, $(key).value));
+  LS_KEYS.forEach((key) => {
+    const el = $(key);
+    if (el) localStorage.setItem(`orical-web-${key}`, el.value);
+  });
   if (state.found.length) saveAppState();
+}
+function applyAutoDefaultsIfEmpty() {
+  const miss = $('autoMissLimit');
+  const max = $('autoMaxCount');
+  if (miss && !miss.value) miss.value = '1';
+  if (max && !max.value) max.value = '300';
+}
+function getAutoMissLimit() {
+  const value = Number($('autoMissLimit')?.value || 1);
+  return Number.isFinite(value) ? Math.min(Math.max(Math.floor(value), 1), 10) : 1;
+}
+function getAutoMaxCount() {
+  const value = Number($('autoMaxCount')?.value || 300);
+  return Number.isFinite(value) ? Math.min(Math.max(Math.floor(value), 1), 1000) : 300;
 }
 function saveAppState() {
   try {
@@ -444,9 +466,12 @@ function restoreAppState(showToast = true) {
 }
 function clearInputs() {
   LS_KEYS.forEach((key) => {
-    $(key).value = '';
+    const el = $(key);
+    if (el) el.value = '';
     localStorage.removeItem(`orical-web-${key}`);
   });
+  applyAutoDefaultsIfEmpty();
+  saveInputs();
   state.found = [];
   localStorage.removeItem(RESULTS_KEY);
   renderResults();
@@ -478,36 +503,54 @@ function parseSingleItem(url, fallbackIndex = 1) {
   return { url: clean, star, ext, num, suffix, single: true };
 }
 
-function parseInput(rawStart, rawEnd) {
+function parseInput(rawStart, rawEnd, options = {}) {
+  const autoMode = !!options.auto;
   const startUrls = extractAllMediaUrls(rawStart);
   const endUrls = extractAllMediaUrls(rawEnd);
   const hasEnd = (rawEnd || '').trim().length > 0;
 
-  if (!hasEnd) {
+  if (!hasEnd && !autoMode) {
     const urls = startUrls.length ? startUrls : [extractMediaUrl(rawStart)].filter(Boolean);
     if (!urls.length || !urls[0]) throw new Error('URLを入力してください。終了URLは空欄でもOKです。');
     return { mode: 'single', items: urls.map((u, i) => parseSingleItem(u, i + 1)) };
   }
 
   const startUrl = startUrls[0] || extractMediaUrl(rawStart);
-  const endUrl = endUrls[0] || extractMediaUrl(rawEnd);
   const startMatch = startUrl.match(/frontimage\/(\d+)_([a-z0-9]+)/i);
-  const endMatch = endUrl.match(/frontimage\/(\d+)/i);
-  if (!startMatch || !endMatch) throw new Error('URLの形式が正しくありません。frontimage/数字_コード のURLを入れてください。');
+  if (!startMatch) throw new Error('開始URLの形式が正しくありません。frontimage/数字_コード のURLを入れてください。');
 
   const startNumStr = startMatch[1];
   const packCode = startMatch[2];
   const startNum = parseInt(startNumStr, 10);
+  if (Number.isNaN(startNum)) throw new Error('開始カード番号を読み取れませんでした。');
+  const baseBeforeStar = startUrl.split(/\/star_\d+/i)[0];
+
+  if (autoMode) {
+    return {
+      mode: 'auto',
+      startUrl,
+      startNumStr,
+      packCode,
+      startNum,
+      baseBeforeStar,
+      missLimit: getAutoMissLimit(),
+      maxCount: getAutoMaxCount()
+    };
+  }
+
+  const endUrl = endUrls[0] || extractMediaUrl(rawEnd);
+  const endMatch = endUrl.match(/frontimage\/(\d+)/i);
+  if (!endMatch) throw new Error('終了URLの形式が正しくありません。frontimage/数字 のURLを入れてください。');
+
   const endNum = parseInt(endMatch[1], 10);
-  if (Number.isNaN(startNum) || Number.isNaN(endNum)) throw new Error('カード番号を読み取れませんでした。');
+  if (Number.isNaN(endNum)) throw new Error('終了カード番号を読み取れませんでした。');
   if (startNum > endNum) throw new Error('開始番号と終了番号の順序が逆です。入れ替えボタンを押してください。');
   if ((endNum - startNum) > 800) throw new Error('範囲が広すぎます。スマホでは重くなるので800件以内にしてください。');
 
-  const baseBeforeStar = startUrl.split(/\/star_\d+/i)[0];
   return { mode: 'range', startUrl, endUrl, startNumStr, packCode, startNum, endNum, baseBeforeStar };
 }
 
-function buildTargets(parsed) {
+function buildTargetsForNumber(parsed, number) {
   const scanPatterns = [
     { star: 1, ext: 'jpg' },
     { star: 2, ext: 'jpg' },
@@ -516,31 +559,36 @@ function buildTargets(parsed) {
     { star: 5, ext: 'mp4' }
   ];
   const suffixes = ['', '_1', '_2'];
-  const groups = [];
-  for (let i = parsed.startNum; i <= parsed.endNum; i++) {
-    const currentNumStr = String(i).padStart(parsed.startNumStr.length, '0');
-    const targets = [];
-    scanPatterns.forEach((p) => {
-      suffixes.forEach((suffix) => {
-        targets.push({
-          url: `${parsed.baseBeforeStar}/star_${p.star}/frontimage/${currentNumStr}_${parsed.packCode}${suffix}.${p.ext}`,
-          star: p.star,
-          ext: p.ext,
-          num: currentNumStr,
-          suffix
-        });
+  const currentNumStr = String(number).padStart(parsed.startNumStr.length, '0');
+  const targets = [];
+  scanPatterns.forEach((p) => {
+    suffixes.forEach((suffix) => {
+      targets.push({
+        url: `${parsed.baseBeforeStar}/star_${p.star}/frontimage/${currentNumStr}_${parsed.packCode}${suffix}.${p.ext}`,
+        star: p.star,
+        ext: p.ext,
+        num: currentNumStr,
+        suffix
       });
     });
-    groups.push({ num: currentNumStr, targets });
+  });
+  return { num: currentNumStr, targets };
+}
+
+function buildTargets(parsed) {
+  const groups = [];
+  for (let i = parsed.startNum; i <= parsed.endNum; i++) {
+    groups.push(buildTargetsForNumber(parsed, i));
   }
   return groups;
 }
 
-async function scan() {
+async function scan(options = {}) {
+  if (options instanceof Event) options = {};
   if (state.scanning) return;
   let parsed;
   try {
-    parsed = parseInput($('startUrl').value, $('endUrl').value);
+    parsed = parseInput($('startUrl').value, $('endUrl').value, options);
   } catch (e) {
     toast(e.message);
     return;
@@ -549,20 +597,62 @@ async function scan() {
   state.scanning = true;
   state.found = [];
   $('resultCard').hidden = false;
-  $('progress').hidden = parsed.mode !== 'range';
-  $('scanBtn').disabled = true;
-  $('scanBtn').textContent = parsed.mode === 'range' ? '検出中...' : '追加中...';
+  $('progress').hidden = parsed.mode === 'single';
+  const scanBtn = $('scanBtn');
+  const autoScanBtn = $('autoScanBtn');
+  if (scanBtn) {
+    scanBtn.disabled = true;
+    scanBtn.textContent = parsed.mode === 'range' ? '検出中...' : parsed.mode === 'auto' ? '自動検索中...' : '追加中...';
+  }
+  if (autoScanBtn) {
+    autoScanBtn.disabled = true;
+    autoScanBtn.textContent = parsed.mode === 'auto' ? '自動検索中...' : '開始URLから自動連番検索';
+  }
   renderResults();
 
   if (parsed.mode === 'single') {
     state.found = parsed.items;
-    state.scanning = false;
-    $('progress').hidden = true;
-    $('scanBtn').disabled = false;
-    $('scanBtn').textContent = '候補を検出 / 単体追加';
+    finishScan('候補を検出 / 単体追加', '開始URLから自動連番検索');
     renderResults();
     saveAppState();
     toast(`${state.found.length}件を追加しました`);
+    return;
+  }
+
+  if (parsed.mode === 'auto') {
+    let consecutiveMisses = 0;
+    let checked = 0;
+    let stoppedByMissing = false;
+    for (let current = parsed.startNum; checked < parsed.maxCount; current++, checked++) {
+      const group = buildTargetsForNumber(parsed, current);
+      $('summary').textContent = `${checked + 1}/${parsed.maxCount} を自動確認中... 見つかった数: ${state.found.length} / 未検出連続: ${consecutiveMisses}/${parsed.missLimit}`;
+      $('progress').value = Math.round(((checked + 1) / parsed.maxCount) * 100);
+
+      const checks = group.targets.map((target) => checkMedia(target).then((ok) => ok ? target : null));
+      const results = await Promise.all(checks);
+      const valid = results.find(Boolean);
+      if (valid) {
+        state.found.push(valid);
+        consecutiveMisses = 0;
+        if (state.found.length <= 12 || state.found.length % 10 === 0) {
+          renderResults();
+          saveAppState();
+        }
+      } else {
+        consecutiveMisses += 1;
+        if (consecutiveMisses >= parsed.missLimit) {
+          stoppedByMissing = true;
+          break;
+        }
+      }
+      await sleep(35);
+    }
+
+    finishScan('候補を検出 / 単体追加', '開始URLから自動連番検索');
+    renderResults();
+    saveAppState();
+    const reason = stoppedByMissing ? `未検出が${parsed.missLimit}件続いたため停止` : `最大確認数${parsed.maxCount}件に到達`;
+    toast(`${state.found.length}件見つかりました（${reason}）`);
     return;
   }
 
@@ -585,13 +675,25 @@ async function scan() {
     await sleep(35);
   }
 
-  state.scanning = false;
-  $('progress').hidden = true;
-  $('scanBtn').disabled = false;
-  $('scanBtn').textContent = '候補を検出 / 単体追加';
+  finishScan('候補を検出 / 単体追加', '開始URLから自動連番検索');
   renderResults();
   saveAppState();
   toast(`${state.found.length}件見つかりました`);
+}
+
+function finishScan(scanLabel, autoLabel) {
+  state.scanning = false;
+  $('progress').hidden = true;
+  const scanBtn = $('scanBtn');
+  const autoScanBtn = $('autoScanBtn');
+  if (scanBtn) {
+    scanBtn.disabled = false;
+    scanBtn.textContent = scanLabel;
+  }
+  if (autoScanBtn) {
+    autoScanBtn.disabled = false;
+    autoScanBtn.textContent = autoLabel;
+  }
 }
 
 function checkMedia(target) {
