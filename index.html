@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>ハロコレ URL保存サポーター</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">スマホ向けWebアプリ版</p>
+      <h1>ハロコレ URL保存サポーター</h1>
+      <p class="lead">カードの <code>frontimage</code> URLを貼るだけで、連番候補を検出してコピー・保存しやすくします。</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card warning">
+      <h2>できること / 注意</h2>
+      <p>WebアプリはChrome拡張のように他サイトへ自動でボタンを差し込めません。代わりに、URLを貼って検出・一括コピー・ZIP保存補助を行います。</p>
+      <p>スマホでは一括ダウンロードが端末やブラウザの制限を受けるため、まずは「URL一覧コピー」か「ZIP作成」を使うのがおすすめです。</p>
+    </section>
+
+    <section class="card">
+      <h2>1. カードURLを指定</h2>
+      <label for="startUrl">開始カードURL</label>
+      <textarea id="startUrl" rows="3" placeholder="https://cdn.orical.jp/cards/.../star_5/frontimage/13000001_xxxxx.mp4"></textarea>
+
+      <label for="endUrl">終了カードURL</label>
+      <textarea id="endUrl" rows="3" placeholder="終了側のURL。数字部分だけ違うURLでもOK"></textarea>
+
+      <div class="grid2">
+        <div>
+          <label for="memberName">保存名の先頭</label>
+          <input id="memberName" type="text" placeholder="例: 広本瑠璃 / 空欄OK" />
+        </div>
+        <div>
+          <label for="folderName">フォルダ名</label>
+          <input id="folderName" type="text" placeholder="例: OCHA_NORMA / 空欄OK" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="scanBtn" class="primary">候補を検出</button>
+        <button id="clearBtn" class="ghost">入力をクリア</button>
+      </div>
+      <p class="hint">開始・終了URLには、ページ本文やHTMLをそのまま貼っても最初に見つかったURLを拾います。</p>
+    </section>
+
+    <section class="card">
+      <h2>2. 詳細ページからURLを拾う補助</h2>
+      <p>スマホで拡張機能が使えない場合は、下のブックマークレットを使うと詳細ページ上でカードURLを抽出しやすくなります。</p>
+      <div class="actions">
+        <button id="copyBookmarklet" class="secondary">抽出ブックマークレットをコピー</button>
+        <button id="showBookmarklet" class="ghost">中身を表示</button>
+      </div>
+      <textarea id="bookmarkletText" rows="4" readonly hidden></textarea>
+      <details>
+        <summary>スマホでの使い方</summary>
+        <ol>
+          <li>このWebアプリをブックマークする</li>
+          <li>ブックマーク編集でURL欄をコピーしたブックマークレットに差し替える</li>
+          <li>ハロコレのカード詳細ページで、そのブックマークを開く</li>
+          <li>カードURLがコピーされるので、このWebアプリに貼る</li>
+        </ol>
+      </details>
+    </section>
+
+    <section class="card resultCard" id="resultCard" hidden>
+      <div class="resultHead">
+        <div>
+          <h2>3. 検出結果</h2>
+          <p id="summary" class="summary">未検出</p>
+        </div>
+        <progress id="progress" value="0" max="100" hidden></progress>
+      </div>
+
+      <div class="actions stickyActions">
+        <button id="copyAllBtn" class="secondary" disabled>URL一覧コピー</button>
+        <button id="shareBtn" class="secondary" disabled>共有</button>
+        <button id="zipBtn" class="primary" disabled>ZIP作成</button>
+      </div>
+
+      <div id="results" class="results"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+</body>
+</html>
