@@ -1,7 +1,8 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v12-shortcut-embedded';
-const HELLOCOLLE_URL = 'https://helloproject.orical.jp/mypage/Ruliiiimaepiiii';
+const RESULTS_KEY = 'orical-web-results-v13-dynamic-mypage';
+const HELLOCOLLE_DEFAULT_URL = 'https://helloproject.orical.jp/mypage';
+const HELLOCOLLE_URL_KEY = 'orical-hellocolle-open-url';
 
 const SHORTCUT_INSTALL_URL = 'https://www.icloud.com/shortcuts/091e2823ce79478ab485c10dbafd8238'; // 埋め込み済みiCloudショートカット共有リンク
 const SHORTCUT_INSTALL_KEY = 'orical-shortcut-install-url';
@@ -69,26 +70,7 @@ window.addEventListener('pageshow', () => {
 
 function wireEvents() {
   LS_KEYS.forEach((key) => $(key).addEventListener('input', saveInputs));
-  const openHelloLink = $('openHelloLink');
-  if (openHelloLink) {
-    const saveBeforeOpen = () => {
-      saveInputs();
-      if (state.found.length) saveAppState();
-      toast('ハロコレを開きます');
-    };
-    openHelloLink.addEventListener('pointerdown', saveBeforeOpen, { passive: true });
-    openHelloLink.addEventListener('click', () => {
-      saveInputs();
-      if (state.found.length) saveAppState();
-    });
-  }
-  const copyHelloBtn = $('copyHelloBtn');
-  if (copyHelloBtn) copyHelloBtn.addEventListener('click', async () => {
-    saveInputs();
-    if (state.found.length) saveAppState();
-    await copyText(HELLOCOLLE_URL);
-    toast('ハロコレURLをコピーしました');
-  });
+  setupHelloOpenControls();
   const pasteStartBtn = $('pasteStartBtn');
   if (pasteStartBtn) pasteStartBtn.addEventListener('click', () => pasteClipboardTo('startUrl'));
   const pasteEndBtn = $('pasteEndBtn');
@@ -130,6 +112,110 @@ function wireEvents() {
   if (useAsEndBtn) useAsEndBtn.addEventListener('click', () => useExtractedUrl('endUrl'));
 }
 
+
+
+function setupHelloOpenControls() {
+  restoreHelloUrlSetting();
+
+  const openHelloLink = $('openHelloLink');
+  if (openHelloLink) {
+    const saveBeforeOpen = () => {
+      updateHelloOpenLink();
+      saveInputs();
+      if (state.found.length) saveAppState();
+      toast('ハロコレを開きます');
+    };
+    openHelloLink.addEventListener('pointerdown', saveBeforeOpen, { passive: true });
+    openHelloLink.addEventListener('click', saveBeforeOpen);
+  }
+
+  const copyHelloBtn = $('copyHelloBtn');
+  if (copyHelloBtn) copyHelloBtn.addEventListener('click', async () => {
+    updateHelloOpenLink();
+    await copyText(getEffectiveHelloUrl());
+    toast('開くURLをコピーしました');
+  });
+
+  const saveHelloUrlBtn = $('saveHelloUrlBtn');
+  if (saveHelloUrlBtn) saveHelloUrlBtn.addEventListener('click', saveHelloUrlFromInput);
+
+  const pasteHelloUrlBtn = $('pasteHelloUrlBtn');
+  if (pasteHelloUrlBtn) pasteHelloUrlBtn.addEventListener('click', async () => {
+    const text = await readClipboardText();
+    if (!text.trim()) return;
+    const firstUrl = extractFirstUrl(text) || text.trim();
+    const input = $('helloUrl');
+    if (input) input.value = firstUrl;
+    saveHelloUrlFromInput();
+  });
+
+  const resetHelloUrlBtn = $('resetHelloUrlBtn');
+  if (resetHelloUrlBtn) resetHelloUrlBtn.addEventListener('click', () => {
+    localStorage.removeItem(HELLOCOLLE_URL_KEY);
+    const input = $('helloUrl');
+    if (input) input.value = '';
+    updateHelloOpenLink();
+    toast('共通マイページURLに戻しました');
+  });
+
+  const helloUrlInput = $('helloUrl');
+  if (helloUrlInput) helloUrlInput.addEventListener('change', saveHelloUrlFromInput);
+}
+
+function restoreHelloUrlSetting() {
+  const saved = localStorage.getItem(HELLOCOLLE_URL_KEY) || '';
+  const input = $('helloUrl');
+  if (input) input.value = saved;
+  updateHelloOpenLink();
+}
+
+function getEffectiveHelloUrl() {
+  const saved = sanitizeHelloUrl(localStorage.getItem(HELLOCOLLE_URL_KEY) || '');
+  return saved || HELLOCOLLE_DEFAULT_URL;
+}
+
+function saveHelloUrlFromInput() {
+  const input = $('helloUrl');
+  const raw = (input?.value || '').trim();
+  if (!raw) {
+    localStorage.removeItem(HELLOCOLLE_URL_KEY);
+    updateHelloOpenLink();
+    toast('共通マイページURLを使います');
+    return;
+  }
+  const url = sanitizeHelloUrl(raw);
+  if (!url) {
+    toast('helloproject.orical.jp のURLを入れてください');
+    return;
+  }
+  localStorage.setItem(HELLOCOLLE_URL_KEY, url);
+  if (input) input.value = url;
+  updateHelloOpenLink();
+  toast('ハロコレを開く先を保存しました');
+}
+
+function updateHelloOpenLink() {
+  const link = $('openHelloLink');
+  if (link) link.href = getEffectiveHelloUrl();
+}
+
+function sanitizeHelloUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return '';
+    if (url.hostname !== 'helloproject.orical.jp') return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}
+
+function extractFirstUrl(text) {
+  const match = String(text || '').match(/https?:\/\/[^\s"'<>]+/i);
+  return match ? cleanUrl(match[0]) : '';
+}
 
 function wireShortcutHelper() {
   const copyJsBtn = $('copyShortcutJsBtn');
@@ -304,7 +390,7 @@ function openHellocolle() {
   // 予備関数。PWAでは window.open が効かないことがあるため、通常はHTMLの<a target="_blank">で開きます。
   saveInputs();
   if (state.found.length) saveAppState();
-  window.location.assign(HELLOCOLLE_URL);
+  window.location.assign(getEffectiveHelloUrl());
 }
 
 function restoreInputs() {

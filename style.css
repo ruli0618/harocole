@@ -194,3 +194,14 @@ progress { width: 120px; height: 12px; }
 @media (max-width: 520px) {
   .shortcutActions button, .shortcutActions .openLink { width: 100%; flex-basis: 100%; }
 }
+
+
+.helloTargetBox {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(37, 99, 235, .16);
+  border-radius: 18px;
+  background: rgba(248, 250, 252, .78);
+}
+.helloTargetBox .actions { margin-top: 10px; }
+.helloTargetBox input { background: #fff; }
