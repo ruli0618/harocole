@@ -136,3 +136,7 @@ progress { width: 120px; height: 12px; }
   .hero { padding-left: 32px; padding-right: 32px; }
   main { padding: 24px; }
 }
+
+.quickOpenActions { margin-top: 12px; }
+.quickOpenActions .primary { width: 100%; min-height: 52px; font-size: 16px; }
+@media (min-width: 720px) { .quickOpenActions .primary { width: auto; min-width: 220px; } }

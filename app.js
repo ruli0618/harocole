@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v6-swap-clean';
+const RESULTS_KEY = 'orical-web-results-v7-open-hellocolle';
+const HELLOCOLLE_URL = 'https://helloproject.orical.jp/mypage/Ruliiiimaepiiii';
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
 const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
@@ -26,6 +27,8 @@ window.addEventListener('pageshow', () => {
 
 function wireEvents() {
   LS_KEYS.forEach((key) => $(key).addEventListener('input', saveInputs));
+  const openHelloBtn = $('openHelloBtn');
+  if (openHelloBtn) openHelloBtn.addEventListener('click', openHellocolle);
   $('scanBtn').addEventListener('click', scan);
   $('clearBtn').addEventListener('click', clearInputs);
   const swapBtn = $('swapBtn');
@@ -90,6 +93,19 @@ function useExtractedUrl(targetId) {
   $(targetId).value = state.extractedUrl;
   saveInputs();
   toast(targetId === 'startUrl' ? '開始URLに入れました' : '終了URLに入れました');
+}
+
+
+function openHellocolle() {
+  saveInputs();
+  if (state.found.length) saveAppState();
+  toast('ハロコレを開きます');
+  try {
+    const w = window.open(HELLOCOLLE_URL, '_blank', 'noopener');
+    if (!w) window.location.href = HELLOCOLLE_URL;
+  } catch (e) {
+    window.location.href = HELLOCOLLE_URL;
+  }
 }
 
 function restoreInputs() {

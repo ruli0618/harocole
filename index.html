@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#2563eb" />
-  <title>ハロコレ URL保存サポーター v6</title>
+  <title>ハロコレ URL保存サポーター v7</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="style.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -15,7 +15,7 @@
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
       <h1>ハロコレ URL保存サポーター</h1>
-      <p class="lead">カードの <code>frontimage</code> URLを貼って、単体動画の保存補助・連番候補の検出・コピーができます。</p>
+      <p class="lead">ハロコレを開いて、取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。</p>
     </div>
   </header>
 
@@ -42,6 +42,11 @@
           <label for="folderName">フォルダ名</label>
           <input id="folderName" type="text" placeholder="例: OCHA_NORMA / 空欄OK" />
         </div>
+      </div>
+
+
+      <div class="actions quickOpenActions">
+        <button id="openHelloBtn" class="primary" type="button">ハロコレを開く</button>
       </div>
 
       <div class="actions">
