@@ -1,5 +1,5 @@
-const CACHE = 'orical-smart-webapp-v11-shortcut-helper';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icon.svg', './icon-180.png', './icon-192.png', './icon-512.png', './favicon.png'];
+const CACHE = 'orical-smart-webapp-v12-shortcut-embedded';
+const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));

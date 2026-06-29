@@ -1,9 +1,9 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v11-shortcut-helper';
+const RESULTS_KEY = 'orical-web-results-v12-shortcut-embedded';
 const HELLOCOLLE_URL = 'https://helloproject.orical.jp/mypage/Ruliiiimaepiiii';
 
-const SHORTCUT_INSTALL_URL = ''; // iCloudショートカット共有リンクを固定したい場合はここに入れます
+const SHORTCUT_INSTALL_URL = 'https://www.icloud.com/shortcuts/091e2823ce79478ab485c10dbafd8238'; // 埋め込み済みiCloudショートカット共有リンク
 const SHORTCUT_INSTALL_KEY = 'orical-shortcut-install-url';
 const shortcutJsCode = `completion((() => {
   const toAbs = (u) => {

@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#ff7dae" />
-  <title>ハロコレ 画像保存サポーター v11</title>
-  <link rel="manifest" href="manifest.webmanifest?v=11" />
-  <link rel="icon" href="favicon.png?v=11" type="image/png" />
-  <link rel="apple-touch-icon" href="icon-180.png?v=11" />
-  <link rel="stylesheet" href="style.css?v=11" />
+  <title>ハロコレ 画像保存サポーター v12</title>
+  <link rel="manifest" href="manifest.webmanifest?v=12" />
+  <link rel="icon" href="favicon.png?v=12" type="image/png" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=12" />
+  <link rel="stylesheet" href="style.css?v=12" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="app.js?v=11"></script>
+  <script defer src="app.js?v=12"></script>
 </head>
 <body>
   <header class="hero">
@@ -76,7 +76,7 @@
       </div>
 
       <div id="shortcutInstallArea" class="shortcutInstallArea" hidden>
-        <p class="hint strongHint">共有済みショートカットが登録されています。初回は下のボタンから追加してください。</p>
+        <p class="hint strongHint">ショートカット共有リンクを埋め込み済みです。初回は下のボタンから追加してください。</p>
         <div class="actions">
           <a id="installShortcutLink" class="primary openLink" href="#" target="_blank" rel="noopener noreferrer external">ショートカットを追加</a>
         </div>
@@ -102,7 +102,7 @@
 
       <details class="setupDetails ownerDetails">
         <summary>配布用の1タップ追加リンクを登録</summary>
-        <p class="hint">完成したショートカットをiCloudリンクで共有し、そのURLをここに登録すると「ショートカットを追加」ボタンを出せます。配布用に固定したい場合は、そのiCloudリンクを教えてくれればアプリ内に埋め込みます。</p>
+        <p class="hint">完成したショートカットをiCloudリンクで共有し、そのURLをここに登録すると「ショートカットを追加」ボタンを出せます。配布用リンクはこの版では埋め込み済みです。必要に応じて別リンクへ一時変更できます。</p>
         <label for="shortcutLinkInput">ショートカット共有リンク</label>
         <input id="shortcutLinkInput" type="url" placeholder="https://www.icloud.com/shortcuts/......" />
         <div class="actions compactActions">
