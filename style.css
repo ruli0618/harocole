@@ -229,3 +229,19 @@ progress { width: 120px; height: 12px; }
   .card > .actions:has(#scanBtn) #scanBtn,
   .card > .actions:has(#scanBtn) #clearBtn { width: 100%; flex-basis: 100%; }
 }
+
+
+/* v15: 複数一括保存ボタンを目立たせる */
+.stickyActions #bulkShareFilesBtn {
+  flex: 1 1 170px;
+  min-height: 48px;
+}
+.stickyActions #bulkSaveBtn,
+.stickyActions #zipBtn,
+.stickyActions #copyAllBtn,
+.stickyActions #shareBtn {
+  flex: 1 1 130px;
+}
+@media (max-width: 520px) {
+  .stickyActions button { width: 100%; flex-basis: 100%; }
+}

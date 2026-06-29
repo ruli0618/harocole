@@ -1,8 +1,8 @@
 {
   "name": "ハロコレ 画像保存サポーター",
   "short_name": "ハロコレ保存",
-  "id": "orical-smart-webapp-v14-bottom-tools",
-  "start_url": "./index.html?v=14",
+  "id": "orical-smart-webapp-v15-bulk-save",
+  "start_url": "./index.html?v=15",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fff1f6",

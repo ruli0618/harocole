@@ -4,20 +4,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#ff7dae" />
-  <title>ハロコレ 画像保存サポーター v14</title>
-  <link rel="manifest" href="manifest.webmanifest?v=13" />
-  <link rel="icon" href="favicon.png?v=13" type="image/png" />
-  <link rel="apple-touch-icon" href="icon-180.png?v=13" />
-  <link rel="stylesheet" href="style.css?v=13" />
+  <title>ハロコレ 画像保存サポーター v15</title>
+  <link rel="manifest" href="manifest.webmanifest?v=15" />
+  <link rel="icon" href="favicon.png?v=15" type="image/png" />
+  <link rel="apple-touch-icon" href="icon-180.png?v=15" />
+  <link rel="stylesheet" href="style.css?v=15" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script defer src="app.js?v=13"></script>
+  <script defer src="app.js?v=15"></script>
 </head>
 <body>
   <header class="hero">
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
       <h1>ハロコレ 画像保存サポーター</h1>
-      <p class="lead">取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。よく使う検出ボタンを上側にまとめ、ハロコレを開く機能とショートカット追加は下側に移動しました。</p>
+      <p class="lead">取得した <code>frontimage</code> URLの単体保存補助・連番候補の検出・コピーができます。検出結果から複数ファイルをまとめて共有保存できるようにしました。</p>
     </div>
   </header>
 
@@ -74,7 +74,9 @@
       <div class="actions stickyActions">
         <button id="copyAllBtn" class="secondary" disabled>URL一覧コピー</button>
         <button id="shareBtn" class="secondary" disabled>共有</button>
-        <button id="zipBtn" class="primary" disabled>ZIP作成</button>
+        <button id="bulkShareFilesBtn" class="primary" disabled>複数一括保存</button>
+        <button id="bulkSaveBtn" class="secondary" disabled>個別保存を連続実行</button>
+        <button id="zipBtn" class="ghost" disabled>ZIP作成</button>
       </div>
 
       <div id="results" class="results"></div>

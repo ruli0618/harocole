@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
-const RESULTS_KEY = 'orical-web-results-v14-bottom-tools';
+const RESULTS_KEY = 'orical-web-results-v15-bulk-save';
 const HELLOCOLLE_DEFAULT_URL = 'https://helloproject.orical.jp/mypage';
 const HELLOCOLLE_URL_KEY = 'orical-hellocolle-open-url';
 
@@ -88,6 +88,8 @@ function wireEvents() {
   if (swapBtn) swapBtn.addEventListener('click', swapStartEnd);
   $('copyAllBtn').addEventListener('click', copyAll);
   $('shareBtn').addEventListener('click', shareAll);
+  $('bulkShareFilesBtn').addEventListener('click', bulkShareFiles);
+  $('bulkSaveBtn').addEventListener('click', bulkDownloadFiles);
   $('zipBtn').addEventListener('click', makeZip);
   const copyBookmarkletBtn = $('copyBookmarklet');
   if (copyBookmarkletBtn) copyBookmarkletBtn.addEventListener('click', async () => {
@@ -642,6 +644,8 @@ function renderResults() {
     : found.length ? `${found.length}件あります` : 'まだ検出結果はありません';
   $('copyAllBtn').disabled = found.length === 0;
   $('shareBtn').disabled = found.length === 0 || !navigator.share;
+  $('bulkShareFilesBtn').disabled = found.length === 0;
+  $('bulkSaveBtn').disabled = found.length === 0;
   $('zipBtn').disabled = found.length === 0;
 
   const html = found.map((item) => {
@@ -863,6 +867,107 @@ async function rewriteMp4DatesToNow(blob, filename = '') {
   walk(0, data.length);
   if (!patched) return blob;
   return new Blob([data], { type: blob.type || 'video/mp4' });
+}
+
+
+function basenameFor(item) {
+  return filenameFor(item).split('/').pop() || `orical_card.${item.ext || 'jpg'}`;
+}
+
+function setBulkButtonsBusy(busy, mainLabel = '複数一括保存', saveLabel = '個別保存を連続実行') {
+  const bulkShareBtn = $('bulkShareFilesBtn');
+  const bulkSaveBtn = $('bulkSaveBtn');
+  const zipBtn = $('zipBtn');
+  const scanBtn = $('scanBtn');
+  [bulkShareBtn, bulkSaveBtn, zipBtn, scanBtn].forEach((btn) => { if (btn) btn.disabled = busy || (btn !== scanBtn && state.found.length === 0); });
+  if (bulkShareBtn) bulkShareBtn.textContent = busy ? mainLabel : '複数一括保存';
+  if (bulkSaveBtn) bulkSaveBtn.textContent = busy ? saveLabel : '個別保存を連続実行';
+}
+
+async function buildFilesForBulkSave() {
+  const files = [];
+  let ok = 0;
+  let ng = 0;
+  for (let i = 0; i < state.found.length; i++) {
+    const item = state.found[i];
+    const filename = basenameFor(item);
+    $('summary').textContent = `一括保存用に取得中 ${i + 1}/${state.found.length}...`;
+    try {
+      const rawBlob = await fetchBlob(item.url);
+      const normalized = await normalizeBlobForSave(rawBlob, filename, item.ext);
+      const file = normalized instanceof File
+        ? new File([normalized], filename, { type: normalized.type || guessMime(filename), lastModified: Date.now() })
+        : makeCurrentFile(normalized, filename);
+      files.push(file);
+      ok++;
+    } catch (e) {
+      console.warn('bulk file fetch failed', item.url, e);
+      ng++;
+    }
+    await sleep(80);
+  }
+  $('summary').textContent = `${state.found.length}件あります`;
+  return { files, ok, ng };
+}
+
+async function bulkShareFiles() {
+  if (!state.found.length) return;
+  if (!navigator.share || !navigator.canShare) {
+    toast('このブラウザは複数ファイル共有に対応していません。ZIP作成を使ってください。');
+    return;
+  }
+  setBulkButtonsBusy(true, '一括取得中...');
+  try {
+    const { files, ok, ng } = await buildFilesForBulkSave();
+    if (!files.length) {
+      toast('一括保存用ファイルを取得できませんでした');
+      return;
+    }
+    if (!navigator.canShare({ files })) {
+      toast('件数または容量が大きくて一括共有できません。件数を減らすかZIP作成を使ってください。');
+      return;
+    }
+    await navigator.share({
+      files,
+      title: 'ハロコレ保存',
+      text: '保存先で「ビデオを保存」または「ファイルに保存」を選んでください。'
+    });
+    toast(`共有シートを開きました / 成功${ok}件${ng ? `・失敗${ng}件` : ''}`);
+  } catch (e) {
+    console.warn('bulk share failed', e);
+    toast('一括保存を開けませんでした。件数を減らすかZIP作成を使ってください。');
+  } finally {
+    setBulkButtonsBusy(false);
+    $('summary').textContent = `${state.found.length}件あります`;
+  }
+}
+
+async function bulkDownloadFiles() {
+  if (!state.found.length) return;
+  setBulkButtonsBusy(true, '取得中...', '連続保存中...');
+  let ok = 0;
+  let ng = 0;
+  try {
+    for (let i = 0; i < state.found.length; i++) {
+      const item = state.found[i];
+      const filename = basenameFor(item);
+      $('summary').textContent = `個別保存を実行中 ${i + 1}/${state.found.length}...`;
+      try {
+        const rawBlob = await fetchBlob(item.url);
+        const blob = await normalizeBlobForSave(rawBlob, filename, item.ext);
+        await downloadBlob(blob, filename);
+        ok++;
+        await sleep(650);
+      } catch (e) {
+        console.warn('bulk download failed', item.url, e);
+        ng++;
+      }
+    }
+    toast(`個別保存を実行しました / 成功${ok}件${ng ? `・失敗${ng}件` : ''}`);
+  } finally {
+    setBulkButtonsBusy(false);
+    $('summary').textContent = `${state.found.length}件あります`;
+  }
 }
 
 async function copyAll() {
