@@ -15,7 +15,7 @@
     <div>
       <p class="eyebrow">スマホ向けWebアプリ版</p>
       <h1>ハロコレ URL保存サポーター</h1>
-      <p class="lead">カードの <code>frontimage</code> URLを貼るだけで、連番候補を検出してコピー・保存しやすくします。</p>
+      <p class="lead">カードの <code>frontimage</code> URLを貼るだけで、単体動画の保存補助・連番候補の検出・コピーができます。</p>
     </div>
   </header>
 
@@ -23,16 +23,17 @@
     <section class="card warning">
       <h2>できること / 注意</h2>
       <p>WebアプリはChrome拡張のように他サイトへ自動でボタンを差し込めません。代わりに、URLを貼って検出・一括コピー・ZIP保存補助を行います。</p>
-      <p>スマホでは一括ダウンロードが端末やブラウザの制限を受けるため、まずは「URL一覧コピー」か「ZIP作成」を使うのがおすすめです。</p>
+      <p>動画はiPhoneの仕様上、写真アプリへ完全自動保存はできません。今回の版では「動画保存」ボタンで共有シートを開き、再生画面を開かずに「ビデオを保存」または「ファイルに保存」を選びやすくしています。</p>
     </section>
 
     <section class="card">
       <h2>1. カードURLを指定</h2>
+      <p class="hint">終了カードURLは空欄でもOKです。開始URLだけの場合は、その動画/画像1件だけを保存対象にします。</p>
       <label for="startUrl">開始カードURL</label>
       <textarea id="startUrl" rows="3" placeholder="https://cdn.orical.jp/cards/.../star_5/frontimage/13000001_xxxxx.mp4"></textarea>
 
       <label for="endUrl">終了カードURL</label>
-      <textarea id="endUrl" rows="3" placeholder="終了側のURL。数字部分だけ違うURLでもOK"></textarea>
+      <textarea id="endUrl" rows="3" placeholder="空欄OK。連番検出したい時だけ終了側URLを入れてください"></textarea>
 
       <div class="grid2">
         <div>
@@ -46,10 +47,10 @@
       </div>
 
       <div class="actions">
-        <button id="scanBtn" class="primary">候補を検出</button>
+        <button id="scanBtn" class="primary">候補を検出 / 単体追加</button>
         <button id="clearBtn" class="ghost">入力をクリア</button>
       </div>
-      <p class="hint">開始・終了URLには、ページ本文やHTMLをそのまま貼っても最初に見つかったURLを拾います。</p>
+      <p class="hint">開始URLだけなら単体モード、開始URL＋終了URLなら連番検出モードになります。ページ本文やHTMLを貼っても最初に見つかったURLを拾います。</p>
     </section>
 
     <section class="card">

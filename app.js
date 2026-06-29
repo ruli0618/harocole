@@ -2,8 +2,9 @@ const $ = (id) => document.getElementById(id);
 const state = { found: [], scanning: false, extractedUrl: '' };
 
 const LS_KEYS = ['startUrl', 'endUrl', 'memberName', 'folderName'];
-const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)/i;
-const bookmarkletCode = `javascript:(()=>{let h=document.documentElement.innerHTML.replace(/\\+/g,'');let m=h.match(/https:\/\/cdn\\.orical\\.jp\/cards\/[^\\s\"'\`<>]+?\/frontimage\/[^\\s\"'\`<>]+?\\.(?:mp4|jpg|jpeg|png|webp)/i);let u=m&&m[0];if(!u){alert('カードURLが見つかりませんでした');return}navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(u).then(()=>alert('カードURLをコピーしました\n'+u)).catch(()=>prompt('コピーしてください',u)):prompt('コピーしてください',u)})();`;
+const mediaUrlRegex = /https:\/\/cdn\.orical\.jp\/cards\/[^\s"'`<>]+?\/frontimage\/[^\s"'`<>]+?\.(?:mp4|jpg|jpeg|png|webp)(?:\?[^\s"'`<>]*)?/i;
+const mediaUrlGlobalRegex = new RegExp(mediaUrlRegex.source, 'ig');
+const bookmarkletCode = `javascript:(()=>{let h=document.documentElement.innerHTML.replace(/\\+/g,'');let m=h.match(/https:\/\/cdn\\.orical\\.jp\/cards\/[^\\s"'\`<>]+?\/frontimage\/[^\\s"'\`<>]+?\\.(?:mp4|jpg|jpeg|png|webp)(?:\\?[^\\s"'\`<>]*)?/i);let u=m&&m[0];if(!u){alert('カードURLが見つかりませんでした');return}navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(u).then(()=>alert('カードURLをコピーしました\\n'+u)).catch(()=>prompt('コピーしてください',u)):prompt('コピーしてください',u)})();`;
 
 window.addEventListener('DOMContentLoaded', () => {
   restoreInputs();
@@ -33,11 +34,21 @@ function wireEvents() {
   $('useAsEndBtn').addEventListener('click', () => useExtractedUrl('endUrl'));
 }
 
+function extractAllMediaUrls(text) {
+  const cleaned = (text || '').trim().replace(/\\+/g, '').replace(/&amp;/g, '&');
+  const matches = cleaned.match(mediaUrlGlobalRegex) || [];
+  return [...new Set(matches.map((u) => cleanUrl(u)))];
+}
+function cleanUrl(url) {
+  return String(url || '').trim().replace(/["'<>]+$/g, '');
+}
+function extractMediaUrl(text) {
+  const urls = extractAllMediaUrls(text);
+  return urls[0] || (text || '').trim();
+}
 
 function extractFromText() {
-  const text = $('extractText').value || '';
-  const matches = text.replace(/\\/g, '').match(new RegExp(mediaUrlRegex.source, 'ig')) || [];
-  const unique = [...new Set(matches.map((u) => u.replace(/[\"'<>]+$/g, '')))];
+  const unique = extractAllMediaUrls($('extractText').value || '');
   if (!unique.length) {
     state.extractedUrl = '';
     $('extractResult').hidden = false;
@@ -80,15 +91,33 @@ function clearInputs() {
   toast('入力をクリアしました');
 }
 
-function extractMediaUrl(text) {
-  const cleaned = (text || '').trim().replace(/\\+/g, '');
-  const match = cleaned.match(mediaUrlRegex);
-  return match ? match[0] : cleaned;
+function parseSingleItem(url, fallbackIndex = 1) {
+  const clean = cleanUrl(url);
+  const pathOnly = clean.split('?')[0];
+  const extMatch = pathOnly.match(/\.(mp4|jpg|jpeg|png|webp)$/i);
+  const starMatch = clean.match(/\/star_(\d+)\//i);
+  const numMatch = clean.match(/frontimage\/(\d+)(?:_([a-z0-9]+))?((_\d+))?\.(?:mp4|jpg|jpeg|png|webp)/i);
+  if (!extMatch) throw new Error('動画/画像URLの拡張子を読み取れませんでした。mp4 / jpg / png / webp のURLを入れてください。');
+  const ext = extMatch[1].toLowerCase() === 'jpeg' ? 'jpg' : extMatch[1].toLowerCase();
+  const star = starMatch ? Number(starMatch[1]) : 0;
+  const num = numMatch ? numMatch[1] : String(fallbackIndex).padStart(3, '0');
+  const suffix = numMatch && numMatch[4] ? numMatch[4] : '';
+  return { url: clean, star, ext, num, suffix, single: true };
 }
 
-function parseUrl(rawStart, rawEnd) {
-  const startUrl = extractMediaUrl(rawStart);
-  const endUrl = extractMediaUrl(rawEnd);
+function parseInput(rawStart, rawEnd) {
+  const startUrls = extractAllMediaUrls(rawStart);
+  const endUrls = extractAllMediaUrls(rawEnd);
+  const hasEnd = (rawEnd || '').trim().length > 0;
+
+  if (!hasEnd) {
+    const urls = startUrls.length ? startUrls : [extractMediaUrl(rawStart)].filter(Boolean);
+    if (!urls.length || !urls[0]) throw new Error('URLを入力してください。終了URLは空欄でもOKです。');
+    return { mode: 'single', items: urls.map((u, i) => parseSingleItem(u, i + 1)) };
+  }
+
+  const startUrl = startUrls[0] || extractMediaUrl(rawStart);
+  const endUrl = endUrls[0] || extractMediaUrl(rawEnd);
   const startMatch = startUrl.match(/frontimage\/(\d+)_([a-z0-9]+)/i);
   const endMatch = endUrl.match(/frontimage\/(\d+)/i);
   if (!startMatch || !endMatch) throw new Error('URLの形式が正しくありません。frontimage/数字_コード のURLを入れてください。');
@@ -102,7 +131,7 @@ function parseUrl(rawStart, rawEnd) {
   if ((endNum - startNum) > 800) throw new Error('範囲が広すぎます。スマホでは重くなるので800件以内にしてください。');
 
   const baseBeforeStar = startUrl.split(/\/star_\d+/i)[0];
-  return { startUrl, endUrl, startNumStr, packCode, startNum, endNum, baseBeforeStar };
+  return { mode: 'range', startUrl, endUrl, startNumStr, packCode, startNum, endNum, baseBeforeStar };
 }
 
 function buildTargets(parsed) {
@@ -138,7 +167,7 @@ async function scan() {
   if (state.scanning) return;
   let parsed;
   try {
-    parsed = parseUrl($('startUrl').value, $('endUrl').value);
+    parsed = parseInput($('startUrl').value, $('endUrl').value);
   } catch (e) {
     toast(e.message);
     return;
@@ -147,10 +176,21 @@ async function scan() {
   state.scanning = true;
   state.found = [];
   $('resultCard').hidden = false;
-  $('progress').hidden = false;
+  $('progress').hidden = parsed.mode !== 'range';
   $('scanBtn').disabled = true;
-  $('scanBtn').textContent = '検出中...';
+  $('scanBtn').textContent = parsed.mode === 'range' ? '検出中...' : '追加中...';
   renderResults();
+
+  if (parsed.mode === 'single') {
+    state.found = parsed.items;
+    state.scanning = false;
+    $('progress').hidden = true;
+    $('scanBtn').disabled = false;
+    $('scanBtn').textContent = '候補を検出 / 単体追加';
+    renderResults();
+    toast(`${state.found.length}件を追加しました`);
+    return;
+  }
 
   const groups = buildTargets(parsed);
   for (let idx = 0; idx < groups.length; idx++) {
@@ -171,7 +211,7 @@ async function scan() {
   state.scanning = false;
   $('progress').hidden = true;
   $('scanBtn').disabled = false;
-  $('scanBtn').textContent = '候補を検出';
+  $('scanBtn').textContent = '候補を検出 / 単体追加';
   renderResults();
   toast(`${state.found.length}件見つかりました`);
 }
@@ -213,7 +253,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function filenameFor(item) {
   const rawName = $('memberName').value.trim() || `card_${item.num}`;
   const rawFolder = $('folderName').value.trim();
-  const safeName = sanitize(`${rawName}_★${item.star}_${item.num}.${item.ext}`);
+  const starText = item.star ? `★${item.star}_` : '';
+  const safeName = sanitize(`${rawName}_${starText}${item.num}${item.suffix || ''}.${item.ext}`);
   const safeFolder = sanitize(rawFolder);
   return safeFolder ? `${safeFolder}/${safeName}` : safeName;
 }
@@ -226,22 +267,24 @@ function renderResults() {
   $('resultCard').hidden = !state.scanning && found.length === 0;
   $('summary').textContent = state.scanning
     ? $('summary').textContent
-    : found.length ? `${found.length}件見つかりました` : 'まだ検出結果はありません';
+    : found.length ? `${found.length}件あります` : 'まだ検出結果はありません';
   $('copyAllBtn').disabled = found.length === 0;
   $('shareBtn').disabled = found.length === 0 || !navigator.share;
   $('zipBtn').disabled = found.length === 0;
 
   const html = found.map((item) => {
     const name = filenameFor(item);
-    const label = `★${item.star} / ${item.ext.toUpperCase()} / ${item.num}${item.suffix || ''}`;
+    const starLabel = item.star ? `★${item.star}` : '単体';
+    const label = `${starLabel} / ${item.ext.toUpperCase()} / ${item.num}${item.suffix || ''}`;
+    const isVideo = item.ext === 'mp4' || item.ext === 'mov';
     return `<article class="resultItem">
       <div class="resultTitle"><strong>${escapeHtml(name.split('/').pop())}</strong><span class="badge">${label}</span></div>
       <div class="urlBox">${escapeHtml(item.url)}</div>
       <div class="itemActions">
         <button type="button" data-copy="${encodeURIComponent(item.url)}">コピー</button>
         <a href="${item.url}" target="_blank" rel="noopener">開く</a>
-        <button type="button" data-save="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}">保存</button>
-        <button type="button" data-sharefile="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}">共有保存</button>
+        <button type="button" data-save="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}" data-ext="${item.ext}">${isVideo ? '動画保存' : '保存'}</button>
+        <button type="button" data-sharefile="${encodeURIComponent(item.url)}" data-filename="${escapeAttr(name.split('/').pop())}" data-ext="${item.ext}">共有保存</button>
       </div>
     </article>`;
   }).join('');
@@ -254,59 +297,86 @@ function renderResults() {
   });
   document.querySelectorAll('[data-save]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      await saveOne(decodeURIComponent(btn.dataset.save), btn.dataset.filename || 'orical_card');
+      await saveOne(decodeURIComponent(btn.dataset.save), btn.dataset.filename || 'orical_card', btn.dataset.ext || '');
     });
   });
   document.querySelectorAll('[data-sharefile]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      await shareOneFile(decodeURIComponent(btn.dataset.sharefile), btn.dataset.filename || 'orical_card');
+      await shareOneFile(decodeURIComponent(btn.dataset.sharefile), btn.dataset.filename || 'orical_card', btn.dataset.ext || '');
     });
   });
 }
-
 
 async function fetchBlob(url) {
   const res = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.blob();
 }
-async function saveOne(url, filename) {
+function isVideo(extOrName) {
+  return /\.(mp4|mov)(?:\?|$)/i.test(extOrName) || /^(mp4|mov)$/i.test(extOrName || '');
+}
+async function saveOne(url, filename, ext = '') {
+  const video = isVideo(ext) || isVideo(filename) || isVideo(url);
   try {
-    toast('保存用ファイルを取得中...');
+    toast(video ? '動画ファイルを取得中...' : '保存用ファイルを取得中...');
     const blob = await fetchBlob(url);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    if (video) {
+      const shared = await shareBlob(blob, filename, true);
+      if (shared) return;
+      await downloadBlob(blob, filename);
+      toast('保存を開始しました。保存にならない場合は「共有保存」を使ってください');
+      return;
+    }
+    await downloadBlob(blob, filename);
     toast('保存を開始しました');
   } catch (e) {
     await copyText(url);
-    window.open(url, '_blank', 'noopener');
-    toast('直接保存できないためURLをコピーして開きました');
+    if (video) {
+      toast('動画を直接保存できませんでした。URLをコピーしました');
+    } else {
+      toast('直接保存できませんでした。URLをコピーしました');
+    }
   }
 }
-async function shareOneFile(url, filename) {
+async function shareOneFile(url, filename, ext = '') {
   try {
     toast('共有用ファイルを取得中...');
     const blob = await fetchBlob(url);
-    const file = new File([blob], filename, { type: blob.type || guessMime(filename) });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename });
-      toast('共有を開きました');
-    } else {
-      await saveOne(url, filename);
+    const shared = await shareBlob(blob, filename, false);
+    if (!shared) {
+      await copyText(url);
+      toast('共有保存に非対応だったためURLをコピーしました');
     }
   } catch (e) {
     await copyText(url);
     toast('共有保存できませんでした。URLをコピーしました');
   }
 }
+async function shareBlob(blob, filename, preferVideoMessage) {
+  const type = blob.type || guessMime(filename);
+  const file = new File([blob], filename, { type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({ files: [file], title: filename, text: preferVideoMessage ? '保存先で「ビデオを保存」または「ファイルに保存」を選んでください。' : undefined });
+    toast(preferVideoMessage ? '共有シートを開きました' : '共有を開きました');
+    return true;
+  }
+  return false;
+}
+async function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  const objectUrl = URL.createObjectURL(blob);
+  a.href = objectUrl;
+  a.download = filename;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+}
 function guessMime(filename) {
   const lower = filename.toLowerCase();
   if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.mov')) return 'video/quicktime';
   if (lower.endsWith('.png')) return 'image/png';
   if (lower.endsWith('.webp')) return 'image/webp';
   return 'image/jpeg';
@@ -350,16 +420,10 @@ async function makeZip() {
     toast('ZIP化できませんでした。CDN側の制限があるため、URL一覧コピーを使ってください。');
   } else {
     const blob = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${sanitize($('folderName').value.trim()) || 'orical_cards'}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    await downloadBlob(blob, `${sanitize($('folderName').value.trim()) || 'orical_cards'}.zip`);
     toast(`ZIPを作成しました / 成功${ok}件${ng ? `・失敗${ng}件` : ''}`);
   }
-  $('summary').textContent = `${state.found.length}件見つかりました`;
+  $('summary').textContent = `${state.found.length}件あります`;
   zipBtn.disabled = false;
   zipBtn.textContent = 'ZIP作成';
 }
@@ -384,7 +448,7 @@ function toast(message) {
   t.textContent = message;
   t.hidden = false;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { t.hidden = true; }, 2600);
+  toast.timer = setTimeout(() => { t.hidden = true; }, 3000);
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -392,6 +456,9 @@ function escapeHtml(s) {
 function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
 function registerSW() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('service-worker.js').then((reg) => {
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      reg.update().catch(() => {});
+    }).catch(() => {});
   }
 }
